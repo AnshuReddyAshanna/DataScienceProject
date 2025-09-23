@@ -1,0 +1,198 @@
+---
+title: "FAO dataset - Basic Exploration"
+author: "Ingri Katherine Quevedo Rocha"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    number_sections: false
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = F, message = F)
+options(scientific=T, digits = 3) 
+```
+
+```{r init, include=F}
+library(ezids)
+library(ggplot2)
+setwd("C:/Users/k_the/main/01_intro_data_science/DataScienceProject")
+```
+
+# Opening and formatting the dataset
+**Read the data file FAOSTAT Food Balance Sheet 2022**   
+```{r}
+faobs = read.csv("raw_data/FAOSTAT_data_filteredvars2022.csv", header=T)
+str(faobs)
+```
+
+Remove variables we do not need
+```{r}
+faobs_s <- subset(faobs, select = c(Area, Element.Code, Element, Item, Unit, Value))
+
+```
+
+The variable `brand` is currently stored as a "character" variable, or text string and R does not recognize the different categories in the variable. In order for R to recognize it as a categorical (Nominal) variable, we need to use the function _factor_.
+
+```{r}
+pizza$brand <- as.factor(pizza$brand)
+```
+
+The following new summary table with `brand` variable defined as _factor_ allows R to give us the count of each brand.
+
+```{r}
+summary(pizza)
+```
+
+
+# Question 4 
+**Plot histograms (e.g. using ``ggplot`), boxplots (e.g. using `ggplot`), and QQ plots (e.g. using `qqnorm`) for `sodium` and `cal`.  Describe the shape of the distribution and any unusual observations.  Remember to format your plot nicely with titles, labels, colors, ...**
+
+<span style="color:navy; font-weight:bold;">Analysis Sodium variable</span>
+```{r}
+ggplot(data=pizza, aes(sodium)) + 
+  geom_histogram(col="navy", 
+                 fill="lightblue", 
+                 alpha = .7) + # opacity
+  labs(x="Amount of sodium per 100 grams in the sample", y="Frequency") +
+  labs(title="Histogram of Sodium in 100g of Pizza") 
+```
+
+The sodium content in pizza is highly concentrated around 0.4 g per 100 g, with abou `r round((82/nrow(pizza))*100)`%  of the total samples of pizza taking this value. Moreover, most of the observations are concentrated between 0.2 and 1. However, there is a cluster of pizzas that have a large amount of sodium, more than 1.5.
+
+```{r}
+ggplot(data=pizza, aes(x = "", y = sodium)) + 
+  geom_boxplot() + 
+  geom_boxplot( 
+    colour="navy", fill="lightblue", 
+    outlier.colour="firebrick", outlier.fill = NA, outlier.shape=1, outlier.size=1) +
+  labs(title="Boxplot of of Sodium in 100g of Pizza", x="", y = "Amount of sodium per 100 grams in the sample")
+```
+
+In the boxplot we can see more clearly how there are two groups of outliers, a few observations around 1.2 (which looks like the threshold of 1.5*IQR) and a second larger group of outliers where the sodium in 100g of pizza is above 1.5, a considerably large value compared to the median 0.5.
+
+```{r}
+qqnorm(pizza$sodium, main="Q-Q plot of Sodium in 100g of Pizza") 
+qqline(pizza$sodium)
+```
+
+The Q-Q plot presents that the sodium variable differs largely from a normal distribution. At the lower quantiles, the values rise above the theorical quantiles, the left tail is lighter than expected under normality. Around the middle quantiles, the points fall below the 45 line and at the upper quantiles there is a large concentration of outliers.
+
+
+<span style="color:navy; font-weight:bold;">Analysis Calories variable</span>
+
+```{r}
+ggplot(data=pizza, aes(cal)) + 
+  geom_histogram(col="navy", 
+                 fill="lightblue", 
+                 alpha = .7) + # opacity
+  labs(x="Amount of calories per 100 grams in the sample", y="Frequency") +
+  labs(title="Histogram of Calories in 100g of Pizza") 
+```
+
+The bulk of the data is concentrated between ~2.5 and ~3.8 calories per 100g. It resembles the bell shape of a normal distribution but is not perfectly symmetric, the right tail stretches further than the left.
+
+There is also a clear cluster of high-calorie pizzas after 4.5, these observations could be considered outliers compared to the main bulk of the distribution.
+
+```{r}
+ggplot(data=pizza, aes(x = "", y = cal)) + 
+  geom_boxplot() + 
+  geom_boxplot( 
+    colour="navy", fill="lightblue", 
+    outlier.colour="firebrick", outlier.fill = NA, outlier.shape=1, outlier.size=1) +
+  labs(title="Boxplot of of Calories in 100g of Pizza", x="", y = "Amount of calories per 100 grams in the sample")
+```
+
+This graph highlights that there is an important amount of pizzas that have substantially higher calorie counts per 100g values, seen in the boxplot as the red outliers (>1.5*IQR). It also shows the median is around 3.2.
+
+
+```{r}
+qqnorm(pizza$cal, main="Q-Q plot of Calories in 100g of Pizza") 
+qqline(pizza$cal)
+```
+
+The Q-Q plot shows that the distribution of the calories variable between ~2.5 and ~3.8 closely matches the teorical quantiles of a normal distribution. However, there is a large discrepancy at the lower and higher quantiles.
+
+
+# Question 5 
+**Plot a scatterplot (e.g. using `ggplot`) between `sodium` and `cal`, with points colored by `brand`.  Describe any interesting patterns revealed with this data visualization.**  
+
+```{r}
+ggplot(data = pizza, aes(x = cal, y = sodium, color = brand)) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(title = "Scatterplot of Calories vs Sodium in 100g of Pizza",
+    x = "Calories per 100g",
+    y = "Sodium per 100g",
+    color = "Brand"
+  ) +
+  theme_minimal()
+```
+
+In this plot we can see that the brand A of pizzas has very large amount of calories and sodium. For the brands B, C, D, and J shows what looks like there is a positive correlation between calories and sodium on their pizza samples. On the other hand, the rest of the brands show no visible relation between the two variables, as we can see that the value for calories varies while the level of sodium does not change.
+
+
+# Question 6 
+**Plot a scatterplot (e.g. using `ggplot`) between `sodium` and `cal`, with points colored by `prot`.  Describe any interesting patterns revealed with this data visualization.  What major formatting difference do you see between this and the previous scatterplot?**
+
+```{r}
+ggplot(data = pizza, aes(x = cal, y = sodium, color = prot)) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(title = "Scatterplot of Calories vs Sodium in 100g of Pizza",
+    x = "Calories per 100g",
+    y = "Sodium per 100g",
+    color = "Amount of protein\nper 100 grams\nin the sample"
+  ) +
+  scale_color_gradient(low = "red", high = "green") +
+  theme_minimal()
+```
+
+This plot reflects that there isn’t a clear relationship between protein and calories or sodium. Instead, the scatterplot shows clusters, similars to the ones seen in the plot by brand. The samples with higher values of calories and sodium, which was identified in the previous sample to be associated to Brand A has value of protein around 20 grams per 100 grams in the sample. The samples with low calories, and low sodium, from what we saw in previous graph reflects brand C, has larger values of protein, above 25.
+
+
+# Question 7 
+**Make a plot with `sodium` as y, and `brand` as x. What kind of plot would you choose?  Why?  Describe any interesting patterns revealed with this data visualization.**  
+
+```{r}
+ggplot(pizza, aes(x = reorder(brand, sodium, FUN = mean), y = sodium, fill = brand)) +
+  geom_bar(stat = "summary", fun = "mean") +
+  labs(
+    title = "Average Sodium per 100g of Pizza by Brand",
+    x = "Brand",
+    y = "Average Sodium per 100g"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+When analyzing a continue variable by a categorical variable, a bar graph offers a simple and informative way to visualize measures of central tendency, such a mean, median, or specific percentiles. One important feature that helps the easy understanding of the plot is sorting the x-axis by the y-variable. For instance, in the graph of average sodium by brand, we can see that brand A has the largest amount of sodium, above 1.5g per 100g of pizza average, while the brand H has the lowest average, below 0.5g per 100g of pizza.
+
+# Question 8 
+**Use the `ezids::outlierKD2()` function to exclude outliers for `sodium`, then run the function again to exclude outliers on `cal`. Re-do the QQ plots for these two variables. Do you see much improvement in the normality?** 
+
+<span style="color:navy; font-weight:bold;">Removing outliers on sodium</span>
+```{r }
+pizza_s = outlierKD2(pizza, sodium, rm = TRUE, boxplt = TRUE, qqplt = TRUE)
+```
+
+The Q-Q plots show that removing sodium outliers brings the sample quartiles closer to the theoretical quartiles. However, there is still a noticeable deviation in the upper quartiles. As the histogram indicates, the distribution remains asymmetric, with a longer left tail.
+
+<span style="color:navy; font-weight:bold;">Removing outliers on calories</span>
+```{r }
+pizza_s_c = outlierKD2(pizza_s, cal, rm = TRUE, boxplt = TRUE, qqplt = TRUE)
+```
+
+For calories, removing outliers makes the theoretical and sample quartiles align more closely in the Q-Q plots. Nevertheless, the histogram shows that the distribution is still not normal. There are two calorie values, around 2.9 and 3.4, with similar frequencies, so the property of the normal distribution where the mean, median, and mode coincide does not hold here. In addition, the distribution now appears to have a longer right tail.
+
+<span style="color:navy; font-weight:bold;">Summary stats new dataset without outliers on calories and sodium </span>
+```{r }
+summary(pizza_s_c)
+```
+
+The dataset has the same number of observations but it now has `r sum(is.na(pizza_s_c$sodium))` observations missing for sodium and `r sum(is.na(pizza_s_c$cal))` observations missing for calories.
+
