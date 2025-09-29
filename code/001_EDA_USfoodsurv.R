@@ -3,9 +3,9 @@ install.packages("haven")
 install.packages("tidyverse")
 
 library(haven)
+library(tidyverse)
 
-setwd("C:/Users/k_the/Downloads")
 # path to your .xpt file
-demographics = read_xpt("DEMO_L.xpt")
-
-day1 = read_xpt("DR1IFF_L.xpt")
+demographics = read_xpt("../raw_data/DEMO_L.xpt")
+day1_foods = read_xpt("../raw_data/DR1IFF_L.xpt")
+day1_nutri = read_xpt("../raw_data/DR1TOT_L.xpt")
