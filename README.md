@@ -12,17 +12,9 @@ Marlon Demandt
 
 This project is part of the Introduction to Data Science (6101-12) course at The George Washington University (Fall 2025, Master’s level).
 
-We examine the variation in per capita protein and fat supplies between developing countries in the Global South and developed countries in the Global North. Using the 2022 FAO Food Balance Sheets from the Food and Agriculture Organization of the United Nations (FAO)
-, we measure and compare the average daily per capita supply (in grams) of protein and fat across regional groups.
 
-Our analysis is implemented in R, with a workflow that includes raw data acquisition, cleaning, transformation, and visualization.
+SMART Question: How does sodium intake vary by demographic factors (age, gender, race/ethnicity, income)?
 
-## Objectives
-- Quantify and compare per capita protein and fat supplies across Global South and Global North countries.
-- Visualize regional disparities in nutritional intake.
-- Provide insights relevant to food security and nutrition policy
-
----
 
 ## Repository Structure
 <pre>
@@ -38,10 +30,14 @@ Our analysis is implemented in R, with a workflow that includes raw data acquisi
 ---
 
 ## Data Source
-Food and Agriculture Organization of the United Nations (FAO)
-- Food Balance Sheets, 2022
-- Accessed via FAOSTAT: https://www.fao.org/faostat/en/#data/FBS
+National Center for Health Statistics (NCHS)
+- NHANES (National Health and Nutrition Examination Survey)
+- WWEIA (What We Eat in America)
+- Collected as part of NHANES to monitor the food and nutrient intakes of the U.S. population.
 
+Files 
+- Files include DEMO (demographics), DR1IFF (Day 1 foods), DR1TOT (Day 1 totals), and many others.
+Link to data: https://www.ars.usda.gov/northeast-area/beltsville-md-bhnrc/beltsville-human-nutrition-research-center/food-surveys-research-group/docs/wweia-documentation-and-data-sets/
 ## Tools & Technologies
 - R: Data cleaning, analysis, and visualization
 - FAO FAOSTAT Data: Primary source of nutrition data
