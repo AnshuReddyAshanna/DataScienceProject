@@ -14,7 +14,6 @@ day1_nutri = read_xpt("../raw_data/DR1TOT_L.xpt")
 ## Create one merged df
 # merge demo + foods (many rows per person, each food reported indv.)
 demo_foods <- demographics %>%
-  inner_join(day1_foods, by = "SEQN")
   inner_join(day1_foods, by = "SEQN") # IN NHANES SEQN is a unique ID for each participant 
 #add nutrient totals to demo_foods
 demo_foods_full <- demo_foods %>%
@@ -26,8 +25,9 @@ dim(day1_foods)        # food records
 dim(day1_nutri)        # nutrient totals
 dim(demo_foods)        # demo + foods
 dim(demo_foods_full)   # demo + foods + nutrient totals
+#####################################################
 
-
+#AGREGATION
 # Sodium per person (aggregating foods back up to participant level)
 person_sodium <- demo_foods %>%
   group_by(SEQN, INDFMPIR) %>%   # group by participant ID called SEQN and income-to-poverty ratio (INDFMPIR)
@@ -41,7 +41,7 @@ sodium_by_food <- demo_foods %>%
   group_by(INDFMPIR, DR1IFDCD) %>%  # group by income ratio and USDA food code
   summarise(mean_sodium = mean(DR1ISODI, na.rm = TRUE), # average sodium per food item
             n_foods     = n()) %>%  # number of food items in that group
-  ungroup()  # return a flat data frame
+  ungroup() # return a flat data frame
 
 # Create an income category variable for easier comparisons
 demo_foods <- demo_foods %>%
