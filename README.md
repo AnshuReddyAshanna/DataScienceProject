@@ -8,6 +8,17 @@ Anshu Reddy Ashanna
 
 Marlon Demandt
 
+############### DELETE BEFORE SUBMISSON##############
+
+What we discussed 10/02:
+	•	Ingrid will correctly bind the data as specified by the teacher.
+	•	Marlon will take the next steps in the EDA, starting with hypothesis testing.
+	•	Anshu will draft a strawman version of the PowerPoint presentation.
+	•	In the following week, roles will rotate: 
+	    Marlon will work on the PowerPoint, 
+	    while Anshu supports coding and develops the first visualizations.
+#####################################################
+
 ## Project Overview
 
 This project is part of the Introduction to Data Science (6101-12) course at The George Washington University (Fall 2025, Master’s level).
@@ -41,4 +52,5 @@ Link to data: https://www.ars.usda.gov/northeast-area/beltsville-md-bhnrc/beltsv
 ## Tools & Technologies
 - R: Data cleaning, analysis, and visualization
 - FAO FAOSTAT Data: Primary source of nutrition data
+
 ---
