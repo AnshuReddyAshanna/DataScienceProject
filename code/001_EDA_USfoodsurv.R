@@ -1,11 +1,13 @@
 # install if not already
 install.packages("haven")
 install.packages("tidyverse")
+install.packages("ggplot2")
 library(dplyr)
 
 library(haven)
 library(tidyverse)
 library(dplyr)
+library(ggplot2)
 # path to .xpt file
 demographics = read_xpt("../raw_data/DEMO_L.xpt")
 day1_foods = read_xpt("../raw_data/DR1IFF_L.xpt")
@@ -51,4 +53,40 @@ demo_foods <- demo_foods %>%
     INDFMPIR >= 3 ~ "High",      # at or above 3
     TRUE ~ NA_character_         # assign NA if missing
   ))
+
+
+#### Testing out first visualization ###
+
+#  avg sodium by income group
+sodium_by_income <- demo_foods %>%
+  group_by(income_cat) %>%
+  summarise(mean_sodium = mean(DR1ISODI, na.rm = TRUE))
+
+# quick barplot
+ggplot(sodium_by_income, aes(x = income_cat, y = mean_sodium, fill = income_cat)) +
+  geom_col() +
+  labs(title = "Average sodium per food by income group",
+       x = "Income group",
+       y = "Mean sodium (mg)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+###testing out data visualtization###
+
+
+
+#  avg sodium by income group
+sodium_by_income <- demo_foods %>%
+  group_by(income_cat) %>%
+  summarise(mean_sodium = mean(DR1ISODI, na.rm = TRUE))
+
+# quick barplot
+ggplot(sodium_by_income, aes(x = income_cat, y = mean_sodium, fill = income_cat)) +
+  geom_col() +
+  labs(title = "Average sodium per food by income group",
+       x = "Income group",
+       y = "Mean sodium (mg)") +
+  theme_minimal() +
+  theme(legend.position = "none")
 
