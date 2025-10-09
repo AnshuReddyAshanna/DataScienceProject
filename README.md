@@ -10,6 +10,8 @@ Marlon Demandt
 
 ############### DELETE BEFORE SUBMISSON##############
 
+Presentation Slides: https://www.canva.com/design/DAG0xxTfUy4/opLRMk8t8BcRPFtrzT6HyQ/edit?utm_content=DAG0xxTfUy4&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
+
 What we discussed 10/02:
 	•	Ingrid will correctly bind the data as specified by the teacher.
 	•	Marlon will take the next steps in the EDA, starting with hypothesis testing.
