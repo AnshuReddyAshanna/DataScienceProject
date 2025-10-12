@@ -27,6 +27,12 @@ This project is part of the Introduction to Data Science (6101-12) course at The
 
 
 SMART Question: How does sodium intake vary by demographic factors (age, gender, race/ethnicity, income)?
+First findings:
+- No significant difference by gender
+- Age shows clear differences, wuth older adults consume less sodium
+- No significant differences by race/ethnicity
+- Small but significant differences by income
+
 
 
 ## Repository Structure
