@@ -4,6 +4,7 @@ rm(list = ls())
 # Libraries
 library(arrow)
 library(ggplot2)
+library(ezids)
 
 #Set Working Directory as the DataScienceProject folder
 getwd()  

@@ -4,6 +4,9 @@ rm(list = ls())
 # Libraries
 library(arrow)
 library(ggplot2)
+library(ezids)
+library(labelled)
+library(gtsummary)
 
 #Set Working Directory as the DataScienceProject folder
 getwd()  
@@ -12,8 +15,27 @@ setwd("..")
 #### Reading the parquet file
 food <- read_parquet("proc_data/demo_foods.parquet")
 str(food)
+# Quick look at the dataset: Summary
 xkablesummary(food)
+# Quick look at the dataset: Summary Demographics
+xkablesummary(food[c("RIAGENDR", "RIDAGEYR", "RIDRETH3", "DMDEDUC2", "DMDMARTZ","DMDHHSIZ", "INDFMPIR")])
 
+food2 <- food %>%
+  mutate(across(where(is.labelled), to_factor))
+
+food2 %>%
+  select(RIAGENDR, RIDAGEYR, RIDRETH3, DMDEDUC2, DMDMARTZ, DMDHHSIZ, INDFMPIR) %>%
+  tbl_summary(
+    type = list(
+      RIAGENDR ~ "categorical",
+      RIDRETH3 ~ "categorical",
+      DMDEDUC2 ~ "categorical",
+      DMDMARTZ ~ "categorical"
+    ),
+    statistic = all_continuous() ~ "{mean} ({sd})",
+    missing = "ifany"   # <--- shows N (and %) of missing values
+  ) %>%
+  bold_labels()
 #EDA - Visualizations
 
 #Histogram for the distribution of calorie intake
