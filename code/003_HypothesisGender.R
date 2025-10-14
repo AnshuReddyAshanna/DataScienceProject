@@ -21,66 +21,37 @@ setwd("..")
 food <- read_parquet("proc_data/demo_foods.parquet")
 
 
-
 ## Histograms by Gender
 # Make sure gender is a factor with readable labels
 food$RIAGENDR <- factor(food$RIAGENDR,
                         levels = c(1, 2),
                         labels = c("Male", "Female"))
-# Compute group means for labels/points
-group_means <- food %>%
-  group_by(RIAGENDR) %>%
-  summarize(mean_prot = mean(DR1IPROT_sum, na.rm = TRUE), .groups = "drop")
 
-# Optional overall mean (uncomment if you want a horizontal reference line)
-overall_mean <- mean(food$DR1IPROT_sum, na.rm = TRUE)
-
-bprot_gender_mean <- ggplot(food, aes(x = RIAGENDR, y = DR1IPROT_sum, fill = RIAGENDR)) +
-  geom_boxplot(
+# Overlapping histograms of Protein Intake by Gender
+hprot_gender <- ggplot(food, aes(x = DR1IPROT_sum, fill = RIAGENDR)) +
+  geom_histogram(
+    breaks = seq(0, 500, by = 10),
     color = "black",
-    alpha = 0.7,
-    outlier.color = "brown3",
-    outlier.shape = 16,
-    outlier.size = 2
+    alpha = 0.5,
+    position = "identity"   # overlay instead of stacking
   ) +
-  # Mean per gender as larger points
-  stat_summary(
-    fun = mean,
-    geom = "point",
-    shape = 21,
-    size = 3.5,
-    stroke = 1.2,
-    fill = "white",
-    color = "chocolate4",
-    position = position_dodge(width = 0.75)
-  ) +
-  # Optional: label the mean value above the point
-  geom_text(
-    data = group_means,
-    aes(x = RIAGENDR, y = mean_prot, label = round(mean_prot, 1)),
-    vjust = -1.0,
-    size = 4,
-    color = "chocolate4",
-    fontface = "bold"
-  ) +
-  # Optional: overall mean line across both groups
-  geom_hline(yintercept = overall_mean, linetype = "dashed", linewidth = 1, color = "brown3") +
-  annotate("text", x = 1.5, y = overall_mean, label = paste0("Overall mean = ", round(overall_mean, 1)),
-           vjust = -0.8, color = "brown3", fontface = "bold", size = 4) +
   scale_fill_manual(
     name = "Gender",
-    values = c("Male" = "chocolate4", "Female" = "darkorange3")
+    values = c("Male" = "chocolate4", "Female" = "palegreen3")
   ) +
   labs(
-    title = "Boxplot of Daily Protein Intake by Gender (with Means)",
-    x = "Gender",
-    y = "Total Protein (grams)"
+    title = "Distribution of Daily Protein Intake by Gender",
+    x = "Total Protein (grams)",
+    y = "Frequency"
   ) +
   theme(
+    # Background colors
     plot.background  = element_rect(fill = "antiquewhite", color = NA),
     panel.background = element_rect(fill = "antiquewhite", color = NA),
     panel.grid.major = element_line(color = "white"),
     panel.grid.minor = element_blank(),
+    
+    # Font sizes
     plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 14, face = "bold"),
     axis.text  = element_text(size = 12),
@@ -88,9 +59,48 @@ bprot_gender_mean <- ggplot(food, aes(x = RIAGENDR, y = DR1IPROT_sum, fill = RIA
     legend.text  = element_text(size = 12)
   )
 
-ggsave("output/EDA_box_prot_gender_means.png", plot = bprot_gender_mean, width = 8, height = 6, dpi = 300)
+# Save plot
+ggsave("output/EDA_hist_prot_gender.png", plot = hprot_gender, width = 8, height = 6, dpi = 300)
+
+##### Boxplot by Gender
+# Boxplot grouped by Gender
+bprot_gender <- ggplot(food, aes(x = RIAGENDR, y = DR1IPROT_sum, fill = RIAGENDR)) +
+  geom_boxplot(
+    color = "black",
+    alpha = 0.7,
+    outlier.color = "brown3",
+    outlier.shape = 16,
+    outlier.size = 2
+  ) +
+  scale_fill_manual(
+    name = "Gender",
+    values = c("Male" = "chocolate4", "Female" = "palegreen3")
+  ) +
+  labs(
+    title = "Boxplot of Daily Protein Intake by Gender",
+    x = "Gender",
+    y = "Total Protein (grams)"
+  ) +
+  theme(
+    # Background colors
+    plot.background  = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text  = element_text(size = 12)
+  )
+
+# Save plot
+ggsave("output/EDA_box_prot_gender.png", plot = bprot_gender, width = 8, height = 6, dpi = 300)
 
 ##### Ttest-protein means
+food <- read_parquet("proc_data/demo_foods.parquet")
 protmean95 <- t.test(food$DR1IPROT_sum, conf.level = 0.95)
 protmean95
 
@@ -122,7 +132,7 @@ prot_summary <- data.frame(
   )
 )
 
-group_colors <- c("Total" = "chocolate3", "Male" = "chocolate4", "Female" = "darkorange3")
+group_colors <- c("Total" = "brown3", "Male" = "chocolate4", "Female" = "palegreen3")
 
 prot_mean_ci <- ggplot(prot_summary, aes(x = Group, y = Mean, color = Group)) +
   geom_point(size = 4, show.legend = FALSE) +
@@ -148,42 +158,25 @@ prot_mean_ci <- ggplot(prot_summary, aes(x = Group, y = Mean, color = Group)) +
 
 ggsave("output/EDA_meanCI_prot.png", plot = prot_mean_ci, width = 8, height = 6, dpi = 300)
 
-# Boxplot grouped by Gender
-bprot_gender <- ggplot(food, aes(x = RIAGENDR, y = DR1IPROT_sum, fill = RIAGENDR)) +
-  geom_boxplot(
-    color = "black",
-    alpha = 0.7,
-    outlier.color = "brown3",
-    outlier.shape = 16,
-    outlier.size = 2
-  ) +
-  scale_fill_manual(
-    name = "Gender",
-    values = c("Male" = "chocolate4", "Female" = "darkorange3")
-  ) +
-  labs(
-    title = "Boxplot of Daily Protein Intake by Gender",
-    x = "Gender",
-    y = "Total Protein (grams)"
-  ) +
-  theme(
-    # Background colors
-    plot.background  = element_rect(fill = "antiquewhite", color = NA),
-    panel.background = element_rect(fill = "antiquewhite", color = NA),
-    panel.grid.major = element_line(color = "white"),
-    panel.grid.minor = element_blank(),
-    
-    # Font sizes
-    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-    axis.title = element_text(size = 14, face = "bold"),
-    axis.text = element_text(size = 12),
-    legend.title = element_text(size = 13, face = "bold"),
-    legend.text  = element_text(size = 12)
-  )
 
-# Save plot
-ggsave("output/EDA_box_prot_gender.png", plot = bprot_gender, width = 8, height = 6, dpi = 300)
+############T-TEST #################
+tres <- t.test(DR1IPROT_sum ~ RIAGENDR, data=food)
+tres
+tres_tidy <- tidy(tres) %>%
+  mutate(across(where(is.numeric), \(x) round(x, 2))) %>%
+  rename(
+    "Mean Male" = estimate1,
+    "Mean Female" = estimate2,
+    "Mean difference" = estimate,
+    "t statistic" = statistic,
+    "p value" = p.value,
+    "CI lower" = conf.low,
+    "CI upper" = conf.high
+  ) %>%
+  select(`Mean Male`, `Mean Female`,
+         `Mean difference`, `CI lower`, `CI upper`, `t statistic`, `p value`)
 
+write.xlsx(tres_tidy, "output/t_test_prot_gender.xlsx", rowNames = FALSE)
 
 ############ ANOVA TEST #################
 anovares = aov( DR1IPROT_sum ~ RIAGENDR, data=food)
