@@ -176,7 +176,26 @@ tres_tidy <- tidy(tres) %>%
   select(`Mean Male`, `Mean Female`,
          `Mean difference`, `CI lower`, `CI upper`, `t statistic`, `p value`)
 
+tres <- t.test(DR1IPROT_sum ~ RIAGENDR, data=food,
+               alternative = "greater")
+tres
+tres_tidy <- tidy(tres) %>%
+  mutate(across(where(is.numeric), \(x) round(x, 2))) %>%
+  rename(
+    "Mean Male" = estimate1,
+    "Mean Female" = estimate2,
+    "Mean difference (Male - Female)" = estimate,
+    "t statistic" = statistic,
+    "p value (one-sided)" = p.value,
+    "CI lower" = conf.low,
+    "CI upper" = conf.high
+  ) %>%
+  select(`Mean Male`, `Mean Female`,
+         `Mean difference (Male - Female)`, `CI lower`, `CI upper`, `t statistic`, `p value (one-sided)`)
+tidy(tres)
+
 write.xlsx(tres_tidy, "output/t_test_prot_gender.xlsx", rowNames = FALSE)
+
 
 ############ ANOVA TEST #################
 anovares = aov( DR1IPROT_sum ~ RIAGENDR, data=food)

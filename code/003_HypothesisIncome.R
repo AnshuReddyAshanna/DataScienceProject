@@ -53,6 +53,36 @@ hincpov<- ggplot(food, aes(INDFMPIR)) +
   )
 ggsave("output/EDA_hist_incomepoverty.png", plot = hincpov, width = 8, height = 6, dpi = 300)
 
+##### Family income as % of poverty level variable and Sugar Intake
+hsug_income_scatter <- ggplot(food, aes(x = INDFMPIR, y = DR1ISUGR_sum)) +
+  geom_point(
+    color = "chocolate4",
+    fill = "chocolate",
+    alpha = 0.6,
+    shape = 21,
+    size = 3,
+    na.rm = TRUE
+  ) +
+  labs(
+    title = "Daily Sugar Intake vs. Family Income (% of Poverty)",
+    x = "Family Income as % of Poverty Level",
+    y = "Total Sugar Intake (grams)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),                    # light grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text  = element_text(size = 12)
+  )
+ggsave("output/EDA_scatter_sugar_income.png", plot = hsug_income_scatter, width = 8, height = 6, dpi = 300)
+
+hsug_income_scatter
 ##### CREATE INCOME CATEGORICAL
 food <- food %>%
   mutate(
@@ -206,21 +236,24 @@ sug_mean_ci <- ggplot(prot_summary, aes(x = Group, y = Mean, color = Group)) +
 ggsave("output/EDA_meanCI_sug_inc.png", plot = sug_mean_ci, width = 8, height = 6, dpi = 300)
 
 ############T-TEST #################
-tres <- t.test(DR1ISUGR_sum ~ poverty_cat, data = food_noNA)
+tres <- t.test(DR1ISUGR_sum ~ poverty_cat,
+               data = food_noNA,
+               alternative = "greater")
 tres
 tres_tidy <- tidy(tres) %>%
   mutate(across(where(is.numeric), \(x) round(x, 2))) %>%
   rename(
-    "Mean (<300% poverty)" = estimate1,
-    "Mean (≥300% poverty)" = estimate2,
-    "Mean difference" = estimate,
+    "Mean (≥300% poverty)" = estimate1,
+    "Mean (<300% poverty)" = estimate2,
+    "Mean difference (high - low)" = estimate,
     "t statistic" = statistic,
-    "p value" = p.value,
+    "p value (one-sided)" = p.value,
     "CI lower" = conf.low,
     "CI upper" = conf.high
   ) %>%
-  select(`Mean (<300% poverty)`, `Mean (≥300% poverty)`,
-         `Mean difference`, `CI lower`, `CI upper`, `t statistic`, `p value`)
+  select(`Mean (≥300% poverty)`, `Mean (<300% poverty)`,
+         `Mean difference (high - low)`, `CI lower`, `CI upper`,
+         `t statistic`, `p value (one-sided)`)
 
 write.xlsx(tres_tidy, "output/t_test_sugar_income.xlsx", rowNames = FALSE)
 
