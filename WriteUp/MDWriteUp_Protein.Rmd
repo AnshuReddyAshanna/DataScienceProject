@@ -70,21 +70,21 @@ demo_cat_tbl
 ```
 ```{r}
 # summarize a few continuous vars (mean/sd/min/max + missing)
+library(gtsummary)
+
 demo_cont_tbl <- food |>
   select(RIDAGEYR, DMDHHSIZ, INDFMPIR) |>
   tbl_summary(
     type = list(everything() ~ "continuous2"),
     statistic = all_continuous() ~ c(
-      "{mean} ({sd})",
-      "Min = {min}",
-      "Max = {max}",
-      "Missing = {n_miss}"
+      "Observations = {N_obs}",
+      "Missing = {N_miss}",
+      "Mean (SD) = {mean} ({sd})",
+      "Min, Max = {min}, {max}"
     ),
     digits = everything() ~ 2
   ) |>
   bold_labels()
-
-demo_cont_tbl
 ```
 
 
