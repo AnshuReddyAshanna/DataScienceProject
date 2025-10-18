@@ -1,0 +1,90 @@
+---
+title: "NHANES EDA — Demographics & Nutrients"
+author: "Team"
+date: "`r format(Sys.Date())`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: flatly
+    df_print: paged
+---
+
+```{r}
+# knitr / plot options for clean writeup
+knitr::opts_chunk$set(
+  echo = TRUE,       # show code
+  message = FALSE,   # hide package startup messages
+  warning = FALSE,   # hide warnings in the doc
+  fig.width = 7,
+  fig.height = 5,
+  fig.align = "center"
+)
+```
+
+```{r setup, include=FALSE}
+# Set knit options (affects all chunks)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+
+# Set the root directory for all code chunks (important for reading files)
+knitr::opts_knit$set(root.dir = "/Users/marlon/DataScienceProject/proc_data")
+
+# Load required libraries
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(arrow)       # to read parquet files
+library(gtsummary)   # for summary tables
+library(labelled)    # for variable labels if present
+```
+
+```{r}
+# NOTE: the file should be in the working dir of the proc data or adjust the path
+getwd()
+# this is the processed file we created earlier in the pipeline
+food <- read_parquet("demo_foods.parquet")
+
+# quick peek to make sure it loaded 
+dplyr::glimpse(food)
+```
+
+#Demographics (quick summaries)
+```{r}
+# selecting a few categorical vars we care about
+# gives us a nice overview of N and key characteristics
+demo_cat_tbl <- food |>
+  select(RIAGENDR, RIDRETH3, DMDEDUC2, DMDMARTZ) |>
+  tbl_summary(
+    type = list(
+      everything() ~ "categorical"
+    ),
+    missing = "ifany"   # show missing if present
+  ) |>
+  bold_labels()
+
+demo_cat_tbl
+```
+```{r}
+# summarize a few continuous vars (mean/sd/min/max + missing)
+demo_cont_tbl <- food |>
+  select(RIDAGEYR, DMDHHSIZ, INDFMPIR) |>
+  tbl_summary(
+    type = list(everything() ~ "continuous2"),
+    statistic = all_continuous() ~ c(
+      "{mean} ({sd})",
+      "Min = {min}",
+      "Max = {max}",
+      "Missing = {n_miss}"
+    ),
+    digits = everything() ~ 2
+  ) |>
+  bold_labels()
+
+demo_cont_tbl
+```
+
+
