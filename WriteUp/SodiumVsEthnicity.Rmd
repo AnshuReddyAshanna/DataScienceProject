@@ -1,0 +1,384 @@
+---
+title: "SodiumVsEthnicity"
+author: "Team-1"
+date: "2025-10-21"
+output:
+   html_document:
+     code_folding: show
+     number_sections: false
+     toc: yes
+     toc_depth: 3
+     toc_float: yes
+---
+
+```{r init, include=F}
+library(arrow)
+library(ggplot2)
+library(ezids)
+library(labelled)
+library(gtsummary)
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(knitr)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup")
+options(scientific=T, digits = 3) 
+
+# Set the root directory for all code chunks (important for reading files)
+knitr::opts_knit$set(root.dir = "/Users/akashreddyashanna/Desktop/Fall 2025/Intro to DS/DataScienceProject")
+```
+
+# Reading the parquet file
+```{r}
+getwd()  
+food <- read_parquet("proc_data/demo_foods.parquet")
+```
+
+# Preprocessing
+```{r}
+### Describe Demographics
+## Categorical Variables
+tbl <- food %>%
+  select(RIAGENDR, RIDRETH3, DMDEDUC2, DMDMARTZ) %>%
+  tbl_summary(
+    type = list(
+      RIAGENDR ~ "categorical",
+      RIDRETH3 ~ "categorical",
+      DMDEDUC2 ~ "categorical",
+      DMDMARTZ ~ "categorical"
+    ),
+    statistic = all_continuous() ~ "{mean} ({sd})",
+    missing = "ifany"   # <--- shows N (and %) of missing values
+  ) %>%
+  bold_labels()
+
+tbl_df <- as_tibble(tbl, col_labels = TRUE)
+write.xlsx(tbl_df, "output/EDA_categorical_demo.xlsx")
+
+## Continuous Variables
+tbl2 <- food %>%
+  select(RIDAGEYR, DMDHHSIZ, INDFMPIR) %>%
+  summarise(across(
+    everything(),
+    list(
+      mean  = ~ mean(.x, na.rm = TRUE),
+      sd    = ~ sd(.x, na.rm = TRUE),
+      min   = ~ min(.x, na.rm = TRUE),
+      max   = ~ max(.x, na.rm = TRUE),
+      n_na  = ~ sum(is.na(.x))
+    ),
+    .names = "{.col}__{.fn}"
+  )) %>%
+  pivot_longer(
+    everything(),
+    names_to = c("variable", "stat"),
+    names_sep = "__",
+    values_to = "value"
+  ) %>%
+  pivot_wider(
+    names_from = stat,
+    values_from = value
+  ) %>%
+  mutate(label = sapply(variable, function(v) var_label(food[[v]]) %||% NA_character_)) %>%
+  relocate(variable, label) %>%
+  mutate(across(c(mean, sd, min, max), ~ round(.x, 2)))
+write.xlsx(tbl2, "output/EDA_demogcontinuous_summary.xlsx")
+```
+
+
+```{r}
+### Describe Food Nutrients
+
+food_labeled <- food %>%
+  rename(
+    "Calories (kcal)"      = DR1IKCAL_sum,
+    "Protein (g)"          = DR1IPROT_sum,
+    "Carbohydrates (g)"    = DR1ICARB_sum,
+    "Sugars (g)"           = DR1ISUGR_sum,
+    "Fiber (g)"            = DR1IFIBE_sum,
+    "Total Fat (g)"        = DR1ITFAT_sum,
+    "Sodium (mg)"          = DR1ISODI_sum
+  )
+
+foodsum<-xkablesummary(food_labeled[c(
+  "Calories (kcal)",
+  "Protein (g)",
+  "Carbohydrates (g)",
+  "Sugars (g)",
+  "Fiber (g)",
+  "Total Fat (g)",
+  "Sodium (mg)"
+)])
+```
+
+
+```{r}
+#Making sure ethnic group is a factor with readable labels
+
+food$RIDRETH3 <- factor(food$RIDRETH3,
+                        levels = c(1, 2, 3, 4, 6, 7),
+                        labels = c("Mexican American",
+                                   "Other Hispanic",
+                                   "Non-Hispanic White",
+                                   "Non-Hispanic Black",
+                                   "Non-Hispanic Asian",
+                                   "Other Race - Including Multi-Racial"))
+```
+
+**Summary Statistics**
+```{r}
+sodium_summary <- food %>%
+  group_by(RIDRETH3) %>%
+  summarise(
+    mean_sodium = mean(DR1ISODI_sum, na.rm = TRUE),
+    sd_sodium   = sd(DR1ISODI_sum, na.rm = TRUE),
+    median_sodium = median(DR1ISODI_sum, na.rm = TRUE),
+    Sample_Size = n()
+  )
+xkabledply(sodium_summary, title = "Summary Statistics: Sodium Intake by Ethnic Group")
+```
+**We can see the mean, standard deviation , median and sample size for each group. From these numbers, we notice that Non-Hispanic Asians tend to have a higher mean sodium intake compared to other groups.**
+**This summary statistics give us an initial sense that there may be real differences between groups,  but to confirm that, we’ll need visualize the data and later test statistically.**
+
+
+# Exploratory Data Analysis 
+```{r}
+##SODIUM
+hsodium <- ggplot(food, aes(DR1ISODI_sum)) +
+  geom_histogram(
+    breaks=seq(0, 21000, by = 1000),
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Daily Sodium Intake",
+    x = "Total Sodium (grams)",
+    y = "Frequency"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),             # optional: lighten grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # title
+    axis.title = element_text(size = 14, face = "bold"),               # axis titles
+    axis.text = element_text(size = 12)                                # axis labels
+  )
+
+# Display the plot
+hsodium
+
+#Save th plot
+ggsave("output/EDA_hist_sodium.png", plot = hsodium, width = 8, height = 6, dpi = 300)
+```
+**Sodium intake is heavily right-skewed which shows that most people consume moderate amounts, but there are few extreme outliers with very high intakes.**
+
+
+```{r}
+bsodium <- ggplot(food, aes(y = DR1ISODI_sum)) +
+  geom_boxplot(
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9,
+    outlier.color = "brown3",
+    outlier.shape = 16,
+    outlier.size = 2
+  ) +
+  labs(
+    title = "Boxplot of Daily Sodium Intake",
+    x = "",
+    y = "Total Sodium (grams)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12)
+  )
+
+#Display the plot
+bsodium
+
+# Save the boxplot
+ggsave("output/EDA_box_sodium.png", plot = bsodium, width = 8, height = 6, dpi = 300)
+```
+**The boxplot clearly shows those outliers stretching far above the upper whisker.**
+
+```{r}
+par(
+  bg = "antiquewhite",   # background color
+  col.axis = "black",    # axis color
+  col.lab = "black",     # label color
+  col.main = "black",    # title color
+  font.main = 2,         # bold title
+  cex.main = 1.5,        # title size
+  cex.lab = 1.3,         # axis title size
+  cex.axis = 1.1         # axis label size
+)
+
+# Q-Q plot for Sodium Intake
+qqnorm(
+  food$DR1ISODI_sum,
+  main = "Q-Q Plot of Daily Sodium Intake",
+  pch = 19,               # filled points
+  col = "chocolate4",     # point color
+  cex = 0.8               # point size
+)
+qqline(
+  food$DR1ISODI_sum,
+  col = "brown3",         # line color
+  lwd = 2                 # line thickness
+)
+#Save the plot
+dev.copy(png, "output/EDA_qq_sodium_base.png", width = 8, height = 6, units = "in", res = 300)
+dev.off()
+```
+**The Q–Q plot confirms the distribution deviates strongly from normality, especially in the upper tail.**
+
+**This shows that sodium intake varies widely, with some individuals consuming exceptionally high levels.**
+
+```{r}
+##SODIUM-ETHNICITY
+
+box_sodium_ethnic <- ggplot(food, aes(x = RIDRETH3, y = DR1ISODI_sum, fill = RIDRETH3)) +
+  geom_boxplot(
+    alpha = 0.8, 
+    color = "chocolate4"
+    ) +
+  scale_fill_brewer(
+    palette = "Set3"
+    ) +
+  labs(
+    title = "Boxplot of Sodium Intake by different Ethnic Groups",
+    x = "Ethnic Groups",
+    y = "Sodium Intake (grams)"
+    ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text  = element_text(size = 6),
+    legend.position = "none"
+  )
+# Display the plot
+box_sodium_ethnic
+
+# Save plot
+ggsave("output/EDA_box_sodium_ethnic.png", plot = box_sodium_ethnic, width = 8, height = 6, dpi = 300)
+
+```
+**From this plot, we can clearly see that the Non-Hispanic Asian group has a higher median sodium intake compared to others, while Hispanic and White groups appear to have lower overall sodium levels.The variation also differs slightly that means some groups have wider spreads in sodium consumption, likely due to diverse diets within those groups.**
+
+
+
+```{r}
+bar_sodium_ethnic <- ggplot(sodium_summary, aes(x = RIDRETH3, y = mean_sodium, fill = RIDRETH3)) +
+  geom_col(
+    alpha = 0.8, 
+    color = "chocolate4"
+    ) +
+  scale_fill_brewer(
+    palette = "Set3"
+    ) +
+  labs(
+    title = "Barplot of Average Sodium Intake by different Ethnic Groups",
+    x = "Ethnic Group",
+    y = "Mean Sodium Intake (grams)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 16, face = "bold"),
+    axis.text  = element_text(size = 6),
+    legend.position = "none"
+  )
+
+# Display the plot
+bar_sodium_ethnic
+
+# Save plot
+ggsave("output/EDA_bar_sodium_ethnic.png", plot = bar_sodium_ethnic, width = 8, height = 6, dpi = 300)
+```
+**This barplot summarizes the average sodium intake for each ethnic group.We can see again that Non-Hispanic Asians have the highest average sodium intake, followed by Non-Hispanic Whites, while Hispanic and Black groups show lower averages comparatively.This pattern aligns with earlier research, and suggests that sodium consumption is not evenly distributed across ethnicity, which gives us a good reason to test whether these differences are statistical significant.**
+
+# Hypothesis Testing - ANOVA Test
+
+**Null Hypothesis (H0): There is no significant difference in mean sodium intake among ethnic groups.**
+
+**Alternative Hypothesis (H1) : There is a significant difference in mean sodium intake among at least one ethnic groups.**
+
+**Since we have one independent variable - ethnicity with multiple groups and one dependent variable - sodium intake the most suitable statistical method is a One-Way ANOVA.This test helps us determine whether the differences in mean sodium intake that we observed visually are statistically meaningful or just due to random chance.**
+
+```{r}
+anova_result <- aov(DR1ISODI_sum ~ RIDRETH3, data = food)
+anova_result
+xkabledply(anova_result, title = "ANOVA Summary: Sodium Intake by Ethnic Groups")
+```
+
+**The results shows a significant p-value less than 0.05, which means we can reject the null hypothesis, indicating that there is indeed a statistically significant difference in sodium intake among at least one of the ethnic groups.**
+**To know which ethnic groups differ, we are using Post-hoc Tukey HSD.**
+
+#Post-hoc Tukey HSD
+```{r}
+tukeyAoV <- TukeyHSD(anova_result)
+tukeyAoV
+
+# Renaming the column names
+tukey_table <- tidy(tukeyAoV) %>%
+  rename(
+    Comparison = contrast,
+    Mean_Difference = estimate,
+    Lower_95CI = conf.low,
+    Upper_95CI = conf.high,
+    Adjusted_p = adj.p.value
+  ) %>%
+  mutate(Significance = ifelse(Adjusted_p < 0.05, "Significant", "Not Significant"))
+
+# Print clean formatted table
+kable(
+  tukey_table,
+  caption = "Tukey HSD Post-hoc Test for Sodium Intake Across Ethnic Groups",
+  digits = 3,
+  align = "lccccc"
+)
+```
+**From the Tukey HSD results, we can conclude that Non-Hispanic Asian (Asian Americans) adults have a significantly higher sodium intake compared to Mexican Americans, Other Hispanics, Non-Hispanic Whites, and Non-Hispanic Blacks.**
+
+**This supports what we observed earlier in the boxplots and barplots. The findings are consistent with previous studies, which reported similar trends among the U.S. adults.**
+
+**Overall, this analysis highlights that sodium intake does differ among ethnic groups, likely due to cultural dietary habits, traditional food patterns, and cooking practices. Understanding these differences can help inform more culturally tailored public health nutrition guidelines.**
+
+
+
+
+
