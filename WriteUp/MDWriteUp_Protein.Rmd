@@ -40,6 +40,13 @@ library(ggplot2)
 library(arrow)       # to read parquet files
 library(gtsummary)   # for summary tables
 library(labelled)    # for variable labels if present
+library(patchwork)
+library(ezids)
+library(labelled)
+library(openxlsx)
+library(vctrs)
+library(tibble)
+library(broom)
 ```
 
 ```{r}
@@ -51,7 +58,7 @@ food <- read_parquet("demo_foods.parquet")
 # quick peek to make sure it loaded 
 dplyr::glimpse(food)
 ```
-
+**Part I: EDA**
 #Demographics (quick summaries)
 ```{r}
 # selecting a few categorical vars we care about
@@ -68,6 +75,7 @@ demo_cat_tbl <- food |>
 
 demo_cat_tbl
 ```
+**2) Continious Variables**
 ```{r}
 # summarize a few continuous vars (mean/sd/min/max + missing)
 library(gtsummary)
@@ -87,5 +95,266 @@ demo_cont_tbl <- food |>
   bold_labels()
 ```
 
+**3) Nutrients**
+```{r}
+# relabel a few key nutrient totals (Day 1 sums) for nicer plot titles
+nutrient_df <- food |>
+  rename(
+    `Calories (kcal)`   = DR1IKCAL_sum,
+    `Protein (g)`       = DR1IPROT_sum,
+    `Carbohydrates (g)` = DR1ICARB_sum,
+    `Sugars (g)`        = DR1ISUGR_sum,
+    `Fiber (g)`         = DR1IFIBE_sum,
+    `Total Fat (g)`     = DR1ITFAT_sum,
+    `Sodium (mg)`       = DR1ISODI_sum
+  )
+# simple sanity check of the columns exist
+names(nutrient_df)
+```
+**4) Distribution & assumptions**
+Histogram for Protein overall
+```{r}
+p_hist <- ggplot(nutrient_df, aes(`Protein (g)`)) +
+  geom_histogram(
+    bins = 40,
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Day 1 Protein Intake",
+    x = "Protein (g)",
+    y = "Count"
+  ) +
+  theme_minimal(base_size = 13)
 
+p_hist
+
+# (optional) also save to file for slides
+ggsave("output/EDA_hist_prot.png", p_hist, width = 8, height = 6, dpi = 300)
+
+```
+Boxplot for Protein overall
+```{r}
+p_box <- ggplot(nutrient_df, aes(y = `Protein (g)`)) +
+  geom_boxplot(
+    fill = "chocolate",
+    color = "chocolate4",
+    outlier.alpha = 0.5
+  ) +
+  labs(
+    title = "Boxplot: Day 1 Protein Intake",
+    x = "",
+    y = "Protein (g)"
+  ) +
+  theme_minimal(base_size = 13)
+
+p_box
+ggsave("output/EDA_box_prot.png", p_box, width = 8, height = 6, dpi = 300)
+```
+Q–Q plot Protein overall
+```{r}
+p_qq <- ggplot(nutrient_df, aes(sample = `Protein (g)`)) +
+  stat_qq(alpha = 0.5) +
+  stat_qq_line(linewidth = 0.7) +
+  labs(
+    title = "Q–Q Plot: Day 1 Protein Intake",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  ) +
+  theme_minimal(base_size = 13)
+
+p_qq
+ggsave("output/EDA_qq_prot.png", p_qq, width = 8, height = 6, dpi = 300)
+
+```
+**5) Protein by Gender**
+```{r}
+# make a simple gender label (1 = Male, 2 = Female in NHANES)
+gender_df <- nutrient_df |>
+  mutate(gender = case_when(
+    RIAGENDR == 1 ~ "Male",
+    RIAGENDR == 2 ~ "Female",
+    .default = NA_character_
+  ))
+
+prot_gender_summary <- gender_df |>
+  filter(!is.na(gender)) |>
+  group_by(gender) |>
+  summarise(
+    n = n(),
+    mean = mean(`Protein (g)`, na.rm = TRUE),
+    sd = sd(`Protein (g)`, na.rm = TRUE),
+    se = sd / sqrt(n),
+    ci_low = mean - 1.96 * se,
+    ci_high = mean + 1.96 * se,
+    .groups = "drop"
+  )
+
+prot_gender_summary
+```
+
+```{r protein-ci-plot, echo=TRUE, fig.width=8, fig.height=6}
+# Plot mean protein intake by gender with 95% confidence intervals
+p_ci <- ggplot(prot_gender_summary, aes(x = gender, y = mean, color = gender)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = ci_low, ymax = ci_high),
+                width = 0.12, linewidth = 0.8) +
+  labs(
+    title = "Mean Protein Intake (95% CI) by Gender",
+    x = "",
+    y = "Protein (g)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+
+# Display the plot in the knitted document
+p_ci
+```
+###FIX Tomorrow#####
+```{r hist-protein-gender, fig.width=7, fig.height=5}
+# Overlapping histograms of protein intake by gender
+hprot_gender <- ggplot(food, aes(x = DR1IPROT_sum, fill = RIAGENDR)) +
+  geom_histogram(
+    breaks = seq(0, 500, by = 10),
+    color = "black",
+    alpha = 0.6,
+    position = "identity"
+  ) +
+  # Set blue for males and red for females
+  scale_fill_manual(values = c("Male" = "steelblue3", "Female" = "indianred2")) +
+  labs(
+    title = "Distribution of Daily Protein Intake by Gender",
+    x = "Protein Intake (grams)",
+    y = "Frequency",
+    fill = "Gender"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    legend.position = "top"
+  )
+
+# Display the plot
+hprot_gender
+```
+
+**EDA Summary Protein by Gender***
+Summarizing the findings in four graphs using patchwork
+
+```{r protein-multipanel, echo=TRUE, message=FALSE, warning=FALSE, fig.width=12, fig.height=8}
+# packages (if not already loaded)
+
+
+# --- 1) tidy data -----------------------------------------------------------
+# RIAGENDR: 1 = Male, 2 = Female; DR1IPROT_sum = total protein (g)
+prot_df <- food %>%
+  transmute(
+    gender = factor(if_else(RIAGENDR == 1, "Male", "Female"),
+                    levels = c("Male", "Female")),
+    protein = DR1IPROT_sum
+  ) %>%
+  filter(!is.na(gender), !is.na(protein))
+
+# --- 2) compute mean + 95% CI (for point+CI panel) -------------------------
+prot_gender_summary <- prot_df %>%
+  group_by(gender) %>%
+  summarise(
+    n   = n(),
+    mean = mean(protein),
+    sd   = sd(protein),
+    se   = sd / sqrt(n),
+    tcrit = qt(0.975, df = n - 1),
+    ci_low  = mean - tcrit * se,
+    ci_high = mean + tcrit * se,
+    .groups = "drop"
+  )
+
+# --- 3) four complementary views -------------------------------------------
+
+# A) Mean with 95% CI (clean effect view)
+p_ci <- ggplot(prot_gender_summary, aes(x = gender, y = mean, color = gender)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = ci_low, ymax = ci_high), width = 0.15, linewidth = 0.9) +
+  labs(title = "Mean Protein (95% CI) by Gender", x = NULL, y = "Protein (g)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+# B) Boxplot + mean dots (distribution + center)
+p_box <- ggplot(prot_df, aes(x = gender, y = protein, fill = gender)) +
+  geom_boxplot(outlier.alpha = 0.25) +
+  stat_summary(fun = mean, geom = "point", shape = 21, size = 2.5, fill = "white") +
+  labs(title = "Distribution (Boxplot) + Mean", x = NULL, y = "Protein (g)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+# C) Density overlap (shape of distributions)
+p_dens <- ggplot(prot_df, aes(x = protein, fill = gender)) +
+  geom_density(alpha = 0.35) +
+  labs(title = "Density Overlap", x = "Protein (g)", y = "Density") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+# D) Violin + jitter (spread + individual points sample)
+set.seed(42)
+p_viol <- ggplot(prot_df %>% sample_n(min(1500, n())),  # subsample for readability
+                 aes(x = gender, y = protein, fill = gender)) +
+  geom_violin(trim = TRUE, alpha = 0.7) +
+  geom_jitter(width = 0.15, alpha = 0.25, size = 0.7) +
+  stat_summary(fun = mean, geom = "point", shape = 21, size = 2.5, fill = "white") +
+  labs(title = "Violin + Jitter (Subset)", x = NULL, y = "Protein (g)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+# --- 4) assemble into one figure -------------------------------------------
+(p_ci | p_box) / (p_dens | p_viol)
+```
+
+
+**Part II: hypothesis testing** 
+Do Women Eat Less Protein Than Men?
+
+In this section, we statistically test whether the average daily protein intake differs by gender, specifically if **women consume less protein** than men.  
+We’ll visualize the data first, then run a t-test and confirm results with an ANOVA.
+
+```{r setup-hypothesis, message=FALSE, warning=FALSE}
+
+# Convert gender to readable factor
+food$RIAGENDR <- factor(food$RIAGENDR,
+                        levels = c(1, 2),
+                        labels = c("Male", "Female"))
+
+```
+
+**T-Test: Testing Mean Difference Between Men and Women**
+```{r}
+tres <- t.test(DR1IPROT_sum ~ RIAGENDR,
+               data = food,
+               alternative = "greater") # one-sided test
+tres
+```
+**Tidy Summary Table**
+```{r}
+tres_tidy <- tidy(tres) %>%
+  mutate(across(where(is.numeric), round, 2)) %>%
+  rename(
+    "Mean Male" = estimate1,
+    "Mean Female" = estimate2,
+    "Mean Difference (Male - Female)" = estimate,
+    "t Statistic" = statistic,
+    "p Value (one-sided)" = p.value,
+    "CI Lower" = conf.low,
+    "CI Upper" = conf.high
+  ) %>%
+  select(`Mean Male`, `Mean Female`, `Mean Difference (Male - Female)`,
+         `CI Lower`, `CI Upper`, `t Statistic`, `p Value (one-sided)`)
+
+tres_tidy
+```
+**ANOVA Test**
+
+```{r}
+anovares <- aov(DR1IPROT_sum ~ RIAGENDR, data = food)
+summary(anovares)
+```
 
