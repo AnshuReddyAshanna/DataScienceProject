@@ -8,32 +8,18 @@ Anshu Reddy Ashanna
 
 Marlon Demandt
 
-############### DELETE BEFORE SUBMISSON##############
-
 Presentation Slides: https://www.canva.com/design/DAG0xxTfUy4/opLRMk8t8BcRPFtrzT6HyQ/edit?utm_content=DAG0xxTfUy4&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
-
-What we discussed 10/02:
-	•	Ingrid will correctly bind the data as specified by the teacher.
-	•	Marlon will take the next steps in the EDA, starting with hypothesis testing.
-	•	Anshu will draft a strawman version of the PowerPoint presentation.
-	•	In the following week, roles will rotate: 
-	    Marlon will work on the PowerPoint, 
-	    while Anshu supports coding and develops the first visualizations.
-#####################################################
 
 ## Project Overview
 
-This project is part of the Introduction to Data Science (6101-12) course at The George Washington University (Fall 2025, Master’s level).
+This project investigates how lifestyle changes brought about by the COVID-19 pandemic may have influenced Americans’ eating habits and whether long-standing nutritional beliefs still hold true. Previous research suggested that nutrient intake in the U.S. varies by gender, ethnicity, and income level. However, given the widespread shifts in behavior and lifestyle during and after the pandemic, these relationships may have changed. Using the most recent national data on dietary intake (“What Do Americans Eat?”, 2021–2023), this study tests whether pre-pandemic findings remain valid or if the pandemic reshaped patterns of nutrition across different demographic groups.
 
+SMART QUESTIONS:
+- Do Women on Average, Eat Less Protein Than Men?
+- Is Sodium Intake Different Among Ethnic Group?
+- Are there differences in Sugar Intake by Income?
 
-SMART Question: How does sodium intake vary by demographic factors (age, gender, race/ethnicity, income)?
-First findings:
-- No significant difference by gender
-- Age shows clear differences, wuth older adults consume less sodium
-- No significant differences by race/ethnicity
-- Small but significant differences by income
-
-
+Our analysis of a nationally representative sample of U.S. adults aged 20 and older (2021–2023) reveals that several pre-pandemic nutritional patterns continue to hold. On average, men consume more protein than women, consistent with previous findings. However, notable differences across ethnic and income groups also persist. Asian Americans exhibit higher sodium intake compared to several other ethnic groups, while individuals with lower incomes (below 300% of the federal poverty line) tend to consume more sugar than higher-income individuals. These results suggest that although the pandemic may have influenced overall dietary behaviors, some long-standing nutritional disparities across demographic groups remain evident in the post-pandemic period.
 
 ## Repository Structure
 <pre>
@@ -50,7 +36,7 @@ First findings:
 
 ## Data Source
 National Center for Health Statistics (NCHS)
-- NHANES (National Health and Nutrition Examination Survey)
+- NHANES (National Health and Nutrition Examination Survey) 2021-2023
 - WWEIA (What We Eat in America)
 - Collected as part of NHANES to monitor the food and nutrient intakes of the U.S. population.
 
