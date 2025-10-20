@@ -3,10 +3,9 @@ title: "SodiumVsEthnicity"
 author: "Team-1"
 date: "2025-10-21"
 output:
-   html_document:
+   rmdformats::readthedown:
      code_folding: show
-     number_sections: false
-     toc: yes
+     number_sections: true
      toc_depth: 3
      toc_float: yes
 ---
@@ -43,8 +42,8 @@ food <- read_parquet("proc_data/demo_foods.parquet")
 ```
 
 # Preprocessing
+## Describe Demographics
 ```{r}
-### Describe Demographics
 ## Categorical Variables
 tbl <- food %>%
   select(RIAGENDR, RIDRETH3, DMDEDUC2, DMDMARTZ) %>%
@@ -59,7 +58,7 @@ tbl <- food %>%
     missing = "ifany"   # <--- shows N (and %) of missing values
   ) %>%
   bold_labels()
-
+tbl
 tbl_df <- as_tibble(tbl, col_labels = TRUE)
 write.xlsx(tbl_df, "output/EDA_categorical_demo.xlsx")
 
@@ -90,13 +89,12 @@ tbl2 <- food %>%
   mutate(label = sapply(variable, function(v) var_label(food[[v]]) %||% NA_character_)) %>%
   relocate(variable, label) %>%
   mutate(across(c(mean, sd, min, max), ~ round(.x, 2)))
+tbl2
 write.xlsx(tbl2, "output/EDA_demogcontinuous_summary.xlsx")
 ```
 
-
+## Describe Food Nutrients
 ```{r}
-### Describe Food Nutrients
-
 food_labeled <- food %>%
   rename(
     "Calories (kcal)"      = DR1IKCAL_sum,
@@ -117,6 +115,7 @@ foodsum<-xkablesummary(food_labeled[c(
   "Total Fat (g)",
   "Sodium (mg)"
 )])
+foodsum
 ```
 
 
@@ -143,15 +142,15 @@ sodium_summary <- food %>%
     median_sodium = median(DR1ISODI_sum, na.rm = TRUE),
     Sample_Size = n()
   )
-xkabledply(sodium_summary, title = "Summary Statistics: Sodium Intake by Ethnic Group")
+xkabledply(sodium_summary, title = "Summary Statistics: Sodium Intake by Ethnic Groups")
 ```
 **We can see the mean, standard deviation , median and sample size for each group. From these numbers, we notice that Non-Hispanic Asians tend to have a higher mean sodium intake compared to other groups.**
 **This summary statistics give us an initial sense that there may be real differences between groups,  but to confirm that, we’ll need visualize the data and later test statistically.**
 
 
 # Exploratory Data Analysis 
+## SODIUM
 ```{r}
-##SODIUM
 hsodium <- ggplot(food, aes(DR1ISODI_sum)) +
   geom_histogram(
     breaks=seq(0, 21000, by = 1000),
@@ -255,8 +254,8 @@ dev.off()
 
 **This shows that sodium intake varies widely, with some individuals consuming exceptionally high levels.**
 
+## SODIUM-ETHNICITY
 ```{r}
-##SODIUM-ETHNICITY
 
 box_sodium_ethnic <- ggplot(food, aes(x = RIDRETH3, y = DR1ISODI_sum, fill = RIDRETH3)) +
   geom_boxplot(
@@ -280,7 +279,7 @@ box_sodium_ethnic <- ggplot(food, aes(x = RIDRETH3, y = DR1ISODI_sum, fill = RID
     
     #Font sizes
     plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-    axis.title = element_text(size = 10, face = "bold"),
+    axis.title = element_text(size = 12, face = "bold"),
     axis.text  = element_text(size = 6),
     legend.position = "none"
   )
@@ -306,7 +305,7 @@ bar_sodium_ethnic <- ggplot(sodium_summary, aes(x = RIDRETH3, y = mean_sodium, f
     ) +
   labs(
     title = "Barplot of Average Sodium Intake by different Ethnic Groups",
-    x = "Ethnic Group",
+    x = "Ethnic Groups",
     y = "Mean Sodium Intake (grams)"
   ) +
   theme(
@@ -318,7 +317,7 @@ bar_sodium_ethnic <- ggplot(sodium_summary, aes(x = RIDRETH3, y = mean_sodium, f
     
     # Font sizes
     plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-    axis.title = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 12, face = "bold"),
     axis.text  = element_text(size = 6),
     legend.position = "none"
   )
@@ -339,6 +338,7 @@ ggsave("output/EDA_bar_sodium_ethnic.png", plot = bar_sodium_ethnic, width = 8, 
 
 **Since we have one independent variable - ethnicity with multiple groups and one dependent variable - sodium intake the most suitable statistical method is a One-Way ANOVA.This test helps us determine whether the differences in mean sodium intake that we observed visually are statistically meaningful or just due to random chance.**
 
+## ANOVA Test
 ```{r}
 anova_result <- aov(DR1ISODI_sum ~ RIDRETH3, data = food)
 anova_result
@@ -348,7 +348,7 @@ xkabledply(anova_result, title = "ANOVA Summary: Sodium Intake by Ethnic Groups"
 **The results shows a significant p-value less than 0.05, which means we can reject the null hypothesis, indicating that there is indeed a statistically significant difference in sodium intake among at least one of the ethnic groups.**
 **To know which ethnic groups differ, we are using Post-hoc Tukey HSD.**
 
-#Post-hoc Tukey HSD
+## Post-hoc Tukey HSD Test
 ```{r}
 tukeyAoV <- TukeyHSD(anova_result)
 tukeyAoV
