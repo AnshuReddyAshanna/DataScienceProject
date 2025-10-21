@@ -26,7 +26,6 @@ food <- read_parquet("proc_data/demo_foods.parquet")
 #As percentage
 food$INDFMPIR <- food$INDFMPIR * 100
 
-
 ##### Family income as % of poverty level variable
 hincpov<- ggplot(food, aes(INDFMPIR)) +
   geom_histogram( na.rm = TRUE, bins = 40,
