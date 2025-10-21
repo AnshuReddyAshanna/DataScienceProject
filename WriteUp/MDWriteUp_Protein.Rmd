@@ -1,6 +1,6 @@
 ---
 title: "NHANES EDA — Demographics & Nutrients"
-author: "Team"
+subtitle: "Gender Protein Consumption"
 date: "`r format(Sys.Date())`"
 output:
   html_document:
@@ -9,9 +9,10 @@ output:
     theme: flatly
     df_print: paged
 ---
-
+**Setup (packages, paths, global options)**
 ```{r}
 # knitr / plot options for clean writeup
+#show code but hide noisy messages in the doc
 knitr::opts_chunk$set(
   echo = TRUE,       # show code
   message = FALSE,   # hide package startup messages
@@ -49,6 +50,14 @@ library(tibble)
 library(broom)
 ```
 
+---
+
+## Overview
+
+This skript first shows a quick EDA of the NHANES Day-1 dietary recalls plus a focused hypothesis test on protein by gender. 
+
+*Load processed analysis file*
+Below we load the processed parquet we created earlier (proc_data/demo_foods.parquet) and do a quick sanity check so we know what’s in memory.
 ```{r}
 # NOTE: the file should be in the working dir of the proc data or adjust the path
 getwd()
@@ -56,10 +65,27 @@ getwd()
 food <- read_parquet("demo_foods.parquet")
 
 # quick peek to make sure it loaded 
-dplyr::glimpse(food)
+head(food)
 ```
-**Part I: EDA**
-#Demographics (quick summaries)
+
+```{r}
+# Relabel key nutrient totals for easier plotting (MUST come before plots)
+nutrient_df <- food |>
+  rename(
+    `Calories (kcal)`   = DR1IKCAL_sum,
+    `Protein (g)`       = DR1IPROT_sum,
+    `Carbohydrates (g)` = DR1ICARB_sum,
+    `Sugars (g)`        = DR1ISUGR_sum,
+    `Fiber (g)`         = DR1IFIBE_sum,
+    `Total Fat (g)`     = DR1ITFAT_sum,
+    `Sodium (mg)`       = DR1ISODI_sum
+  )
+```
+
+---
+## Part I: EDA
+### A. Demographics (Quick Categorical Summary)
+
 ```{r}
 # selecting a few categorical vars we care about
 # gives us a nice overview of N and key characteristics
@@ -74,8 +100,20 @@ demo_cat_tbl <- food |>
   bold_labels()
 
 demo_cat_tbl
+
+# Calculate average age in the sample
+avg_age <- mean(food$RIDAGEYR, na.rm = TRUE)
+sd_age <- sd(food$RIDAGEYR, na.rm = TRUE)
+n_age <- sum(!is.na(food$RIDAGEYR))
 ```
-**2) Continious Variables**
+The table shows counts and percentages by Gender, Race/Ethnicity, Education, and Marital status. 
+
+The mean age in the NHANES sample is approximately `r round(mean(food$RIDAGEYR, na.rm = TRUE), 1)` years,  with a standard deviation of `r round(sd(food$RIDAGEYR, na.rm = TRUE), 1)`,  based on `r sum(!is.na(food$RIDAGEYR))` participants with non-missing age data. This largely represents U.S. consensus data.
+
+The sample is however  older on average than the overall U.S. population, but this is not a problem for our analysis. We are specifically interested in the adult population, and it is reasonable to assume that younger children largely follow their parents’ dietary patterns.
+
+### B. Demographics (Continuous Summary)
+Next a compact summary (mean, SD, min, max, and missing) for age, household size, and income-to-poverty ratio.
 ```{r}
 # summarize a few continuous vars (mean/sd/min/max + missing)
 library(gtsummary)
@@ -93,13 +131,25 @@ demo_cont_tbl <- food |>
     digits = everything() ~ 2
   ) |>
   bold_labels()
+
+demo_cont_tbl
 ```
 
-**3) Nutrients**
+Interpretation: 
+
+- Age: The average age is about 55 years (SD = 16.8), ranging from 20 to 80 years, showing that our sample mainly consists of middle-aged and older adults.
+
+- Household size: Participants live in households of around 2.5 people on average (SD = 1.4), which is consistent with typical U.S. household structures.
+
+- Income-to-poverty ratio: The mean ratio of 3.0 (SD = 1.7) suggests that, on average, respondents earn roughly three times the federal poverty threshold, though 551 observations are missing for this variable.
+
+Overall, the dataset represents a relatively older and economically stable adult population, appropriate for analyzing dietary patterns.
+
+### C. Nutrients - Overall Summary
 ```{r}
-# relabel a few key nutrient totals (Day 1 sums) for nicer plot titles
-nutrient_df <- food |>
-  rename(
+# Build a clean frame with readable nutrient names
+nutrients <- food |>
+  transmute(
     `Calories (kcal)`   = DR1IKCAL_sum,
     `Protein (g)`       = DR1IPROT_sum,
     `Carbohydrates (g)` = DR1ICARB_sum,
@@ -108,11 +158,39 @@ nutrient_df <- food |>
     `Total Fat (g)`     = DR1ITFAT_sum,
     `Sodium (mg)`       = DR1ISODI_sum
   )
-# simple sanity check of the columns exist
-names(nutrient_df)
+
+tbl_nutrients_overall <- nutrients |>
+  gtsummary::tbl_summary(
+    type      = everything() ~ "continuous2",
+    statistic = all_continuous() ~ c(
+      "Mean (SD) = {mean} ({sd})",
+      "Median [IQR] = {median} [{p25}, {p75}]",
+      "Min, Max = {min}, {max}",
+      "Missing = {N_miss}"
+    ),
+    digits    = everything() ~ 1
+  ) |>
+  gtsummary::bold_labels() |>
+  gtsummary::modify_header(label ~ "**Nutrient**") |>
+  gtsummary::modify_spanning_header(everything() ~ "**Overall**")
+
+tbl_nutrients_overall
 ```
-**4) Distribution & assumptions**
-Histogram for Protein overall
+
+Interpretation:
+
+- The mean sodium intake was ~3,068 mg per day, which exceeds the Food and Drug Administration’s guideline of 2,300 mg/day.
+
+- Mean protein intake (~74 g/day) is within typical recommended ranges (for example ~0.8 g/kg body weight) for most adults.
+
+- Mean sugar intake (~95.6 g/day) is well above the World Health Organization recommendation of < 50 g/day, indicating potential excess.
+
+
+### D. Protein Distribution & Assumptions
+
+Here are three quick visuals to see whether protein looks skewed, if outliers exist, and how far we are from normality (useful context for t-tests).
+
+*1) Histogram — Protein (overall)*
 ```{r}
 p_hist <- ggplot(nutrient_df, aes(`Protein (g)`)) +
   geom_histogram(
@@ -129,12 +207,15 @@ p_hist <- ggplot(nutrient_df, aes(`Protein (g)`)) +
   theme_minimal(base_size = 13)
 
 p_hist
-
-# (optional) also save to file for slides
-ggsave("output/EDA_hist_prot.png", p_hist, width = 8, height = 6, dpi = 300)
-
 ```
-Boxplot for Protein overall
+Interpretation:
+
+- Most respondents consume between 50 g and 100 g of protein per day, with a clear right-skewed pattern — meaning a smaller number of individuals report very high intakes (above 150 g). 
+
+- The concentration around 70–80 g reflects typical adult protein consumption levels in the U.S.
+
+
+*2) Boxplot — Protein (overall)*
 ```{r}
 p_box <- ggplot(nutrient_df, aes(y = `Protein (g)`)) +
   geom_boxplot(
@@ -150,9 +231,19 @@ p_box <- ggplot(nutrient_df, aes(y = `Protein (g)`)) +
   theme_minimal(base_size = 13)
 
 p_box
-ggsave("output/EDA_box_prot.png", p_box, width = 8, height = 6, dpi = 300)
 ```
-Q–Q plot Protein overall
+
+Interpretation:
+
+- The median intake (center line of the box) is around 70–75 g, aligning with the histogram’s peak.
+
+- The interquartile range (IQR), the middle 50% of observations, spans roughly from 50 g to 100 g, indicating moderate variation among most participants.
+
+- Several outliers extend well beyond 150 g, with a few exceeding 400 g, suggesting a small number of individuals reporting unusually high protein intakes (possibly athletes or high-meat diets).
+
+- The lower whisker reaches close to 0, meaning some individuals report minimal protein intake on that day.
+
+*3) Q–Q Plot — Protein (overall)*
 ```{r}
 p_qq <- ggplot(nutrient_df, aes(sample = `Protein (g)`)) +
   stat_qq(alpha = 0.5) +
@@ -165,10 +256,22 @@ p_qq <- ggplot(nutrient_df, aes(sample = `Protein (g)`)) +
   theme_minimal(base_size = 13)
 
 p_qq
-ggsave("output/EDA_qq_prot.png", p_qq, width = 8, height = 6, dpi = 300)
-
 ```
-**5) Protein by Gender**
+
+
+Interpretation:
+
+- The strong upward curvature in the upper tail shows clear right-skewness, with many individuals have higher than expected protein intakes compared to a normal distribution.
+
+- The lower tail stays close to the reference line, suggesting fewer extremely low outliers.
+
+- The overall deviation from the straight line confirms that protein intake is not normally distributed.
+
+In essence, the data are heavily right-skewed, consistent with the histogram and boxplot, meaning that most people consume moderate amounts of protein while a smaller group reports very high values.
+
+### E. Protein by Gender
+
+First, we create a simple gender label and summarize mean and 95% CI.
 ```{r}
 # make a simple gender label (1 = Male, 2 = Female in NHANES)
 gender_df <- nutrient_df |>
@@ -193,7 +296,17 @@ prot_gender_summary <- gender_df |>
 
 prot_gender_summary
 ```
+Interpretation:
 
+- The sample is divided into males and females based on the NHANES gender variable (RIAGENDR).
+
+- For each group, the mean, standard deviation, and 95% confidence interval (CI) of protein intake are computed.
+
+- Results from NHANES data show that men consume substantially more protein than women, both in absolute grams and relative to body weight.
+
+- The computed standard errors (SE) and confidence intervals illustrate the precision of these estimates; narrower intervals indicate more reliable group means.
+
+*Mean ± 95% CI (by Gender)*
 ```{r protein-ci-plot, echo=TRUE, fig.width=8, fig.height=6}
 # Plot mean protein intake by gender with 95% confidence intervals
 p_ci <- ggplot(prot_gender_summary, aes(x = gender, y = mean, color = gender)) +
@@ -211,7 +324,15 @@ p_ci <- ggplot(prot_gender_summary, aes(x = gender, y = mean, color = gender)) +
 # Display the plot in the knitted document
 p_ci
 ```
-###FIX Tomorrow#####
+Interpretation:
+
+- Men have a clearly higher mean protein intake (around 85 g per day) than women (around 65 g per day).
+
+- The non-overlapping confidence intervals suggest that this gender difference is statistically significant — men consume more protein on average than women.
+
+- The small CI ranges indicate low variability.
+
+*Overlapping Histogram — Protein by Gender (Red/Blue)*
 
 ```{r protein-hist-gender, echo=TRUE, fig.width=8, fig.height=5}
 # 1) Make a clean gender factor (1 = Male, 2 = Female)
@@ -235,9 +356,20 @@ ggplot(dplyr::filter(food, !is.na(gender)),
   theme(legend.position = "top")
 ```
 
+Interpretation:
+
+- The distribution for both men and women is right-skewed, meaning most individuals consume moderate amounts of protein, while a few consume much higher quantities.
+
+- Men (blue) tend to consume more protein overall, their distribution shifts slightly to the right compared to women, with a noticeable tail extending toward higher intake levels.
+
+- Women (red) show a lower mean protein intake, clustering around 50–80 grams per day, whereas men more frequently fall between 70–110 grams per day.
+
+- Both distributions overlap substantially, indicating shared dietary patterns, but the difference in central tendency aligns with physiological and caloric differences between genders.
+
+Overall, the figure illustrates that while protein consumption patterns are broadly similar, men on average consume more protein per day than women.
 
 
-**EDA Summary Protein by Gender***
+### EDA Summary Protein by Gender
 Summarizing the findings in four graphs using patchwork
 
 ```{r protein-multipanel, echo=TRUE, message=FALSE, warning=FALSE, fig.width=12, fig.height=8}
@@ -308,12 +440,24 @@ p_viol <- ggplot(prot_df %>% sample_n(min(1500, n())),  # subsample for readabil
 (p_ci | p_box) / (p_dens | p_viol)
 ```
 
+This four-panel visualization provides a comprehensive view of daily protein intake by gender, combining several perspectives to illustrate both central tendency and distribution.
 
-**Part II: hypothesis testing** 
-Do Women Eat Less Protein Than Men?
+- Top-left (Mean Protein Intake with 95% CI): Men consume significantly more protein on average than women, with non-overlapping confidence intervals. This indicates a statistically robust difference between the groups.
 
-In this section, we statistically test whether the average daily protein intake differs by gender, specifically if **women consume less protein** than men.  
-We’ll visualize the data first, then run a t-test and confirm results with an ANOVA.
+- Top-right (Boxplot + Mean):Both genders show a similar range of intake, but the median and mean values are clearly higher for men. 
+
+- Bottom-left (Density Overlap):The distribution for men (red) is shifted to the right, confirming a higher average intake and greater spread. The female distribution (blue) peaks earlier, around 60–80g/day, while men’s density is wider and extends beyond 150g/day.
+
+- Bottom-right (Violin + Jitter):This view highlights the shape and variability of intake more clearly. Both groups show right-skewed distributions, but men’s values are both higher and more dispersed. Individual jittered points indicate considerable within-group variation.
+
+Overall interpretation:
+Across all visualizations, the pattern is consistent—men have a higher mean and wider spread of daily protein intake than women, with women’s intake more concentrated around moderate levels.
+
+
+## Part II: Hypothesis Testing 
+### Question: Do women eat less protein than men (on average)?
+
+We’ll run a **one-sided, two-sample Welch t-test** where the alternative hypothesis is that **men > women** in mean daily protein intake (grams).
 
 ```{r setup-hypothesis, message=FALSE, warning=FALSE}
 
@@ -324,13 +468,25 @@ food$RIAGENDR <- factor(food$RIAGENDR,
 
 ```
 
-**T-Test: Testing Mean Difference Between Men and Women**
+### T-Test (one-sided: Male > Female)
+
 ```{r}
 tres <- t.test(DR1IPROT_sum ~ RIAGENDR,
                data = food,
-               alternative = "greater") # one-sided test
+               var.equal = FALSE,     # Welch (default)
+               alternative = "greater")  # mean(Male) > mean(Female)
 tres
 ```
+Interpretation:
+
+- the test statistic (t = 19.578) is very large, and the p-value is less than 2.2e-16, far below any conventional significance threshold (e.g., < 0.05).
+
+- This means we strongly reject the null hypothesis that the two groups have equal mean protein intake.
+
+- The alternative hypothesis — that men (group 1) consume more protein than women (group 2) — is supported.
+
+- The 95 % confidence interval for the difference in means starts at 20.41 g and extends to infinity, confirming that the difference is both positive and substantial.
+
 **Tidy Summary Table**
 ```{r}
 tres_tidy <- tidy(tres) %>%
@@ -349,10 +505,22 @@ tres_tidy <- tidy(tres) %>%
 
 tres_tidy
 ```
-**ANOVA Test**
 
+### ANOVA (Cross-check)
+A simple one-way ANOVA with gender confirms the same story (it’s equivalent to a two-sided test of equal means).
 ```{r}
 anovares <- aov(DR1IPROT_sum ~ RIAGENDR, data = food)
 summary(anovares)
 ```
+Interpretation:
 
+- The associated p-value is effectively zero, far below the standard 0.05 threshold: This means the difference in mean protein intake between men and women is statistically significant.
+
+- The Sum of Squares shows that gender explains a substantial portion of the total variability in protein intake 
+
+## Overall Interpretation of Results:
+Both the **t-test and ANOVA confirm a highly significant gender effect on protein intake**. In short, **gender is a strong and statistically significant predictor of daily protein intake** in the NHANES dataset.
+
+A potential limitation lies in **recall bias**, as the 24-hour dietary recalls depend on participants’ memory and may lead to inaccurate reporting of portion sizes. Moreover, using **only a single-day recall** cannot fully capture individuals’ usual intake patterns.
+
+Nevertheless, given the strength and consistency of the statistical results, **we can state with high confidence** that women, on average, consume less protein than men.
