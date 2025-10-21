@@ -8,6 +8,8 @@ output:
      number_sections: true
      toc_depth: 3
      toc_float: yes
+bibliography: references.bib
+csl: apa-5th-edition.csl     
 ---
 ```{r init, include=F}
 library(arrow)
@@ -34,35 +36,35 @@ knitr::opts_chunk$set(
 options(scientific=T, digits = 3) 
 
 # Set the root directory for all code chunks (important for reading files)
-knitr::opts_knit$set(root.dir = "/Users/akashreddyashanna/Desktop/Fall 2025/Intro to DS/DataScienceProject")
+#knitr::opts_knit$set(root.dir = "/Users/akashreddyashanna/Desktop/Fall 2025/Intro to DS/DataScienceProject")
+knitr::opts_knit$set(root.dir = "..")
+
 ```
 
 # Introduction
 
-The COVID-19 pandemic and subsequent geopolitical conflicts have profoundly affected populations worldwide, influencing multiple aspects of daily life—including dietary habits. Research indicates that these crises led to notable changes in food consumption patterns. For example, Pandey et al. (2023) found that in India, individuals shifted toward diets with more fruits, vegetables, and home-cooked meals. Similarly, the Brown University Health Department (2023) reported that Americans spent more time cooking at home during the pandemic, which generally promoted healthier eating habits.
+The COVID-19 pandemic and subsequent geopolitical conflicts have profoundly affected populations worldwide, influencing multiple aspects of daily life—including dietary habits. Research indicates that these crises led to notable changes in food consumption patterns. For example, [@pandey_impact_2023] found that in India, individuals shifted toward diets with more fruits, vegetables, and home-cooked meals. Similarly, the [@brown_covid-19_2024] reported that Americans spent more time cooking at home during the pandemic, which generally promoted healthier eating habits.
 
-However, these global shocks also exacerbated inequalities in access to nutritious food. The price of healthy food increased more sharply than that of ultra-processed and high-sugar foods (Lewis et al., 2023). Supply chain disruptions—particularly those linked to the reduction of cereal exports from Ukraine following the Russian invasion—further limited access to affordable, nutrient-rich foods. As a result, many individuals have turned to more accessible but less nutritious food options.
+However, these global shocks also exacerbated inequalities in access to nutritious food. The price of healthy food increased more sharply than that of ultra-processed and high-sugar foods [@lewis_healthy_2023]. Supply chain disruptions—particularly those linked to the reduction of cereal exports from Ukraine following the Russian invasion—further limited access to affordable, nutrient-rich foods. As a result, many individuals have turned to more accessible but less nutritious food options.
 
 Building on these dynamics, this study aims to revisit and test several longstanding hypotheses about dietary patterns, assessing whether the COVID-19 pandemic and recent global economic shocks have altered previous trends.
 
 # SMART Questions
 
-This study explores three central research questions. The **first question** examines whether women, on average, consume less protein than men in the United States. According to the U.S. survey “What We Eat in America?” (2015–2016), adult males consumed approximately one-third more protein than adult females. To the best of our knowledge, there is no post-pandemic research confirming whether this gender gap in protein intake persists. International evidence suggests similar trends. In Italy, men tend to consume more meat and processed meats, while women favor plant-based protein sources, resulting in lower overall protein intake among women (Lombardo, 2025). Likewise, in China, men consume more protein in absolute grams than women (Zhao, Sun, & Su, 2020).
+This study explores three central research questions. The **first question** examines whether women, on average, consume less protein than men in the United States. According to the U.S. survey “What We Eat in America?” (2015–2016) [@u.s._department_of_agriculture_agricultural_research_service_nutrient_2018], adult males consumed approximately one-third more protein than adult females. To the best of our knowledge, there is no post-pandemic research confirming whether this gender gap in protein intake persists. International evidence suggests similar trends. In Italy, men tend to consume more meat and processed meats, while women favor plant-based protein sources, resulting in lower overall protein intake among women ([@lombardo_gender_2025])). Likewise, in China, men consume more protein in absolute grams than women ([@zhao_gender_2020]).
 
-The **second question** investigates whether sodium intake differs across ethnic groups in the U.S. Cheng et al. (2025), in their study “Racial and Ethnic Differences in Sodium Sources and Sodium Reduction Behaviors Among U.S. Adults: NHANES 2017–2020 (Pre-Pandemic)”, found significant variation in sodium intake among racial and ethnic groups. These differences are largely explained by variations in food preferences, cooking habits, and cultural cuisines. For instance, Asian American adults are more likely to use salt during cooking but less likely to add salt at the table, influencing total sodium exposure.
+The **second question** investigates whether sodium intake differs across ethnic groups in the U.S. [@cheng_racial_2025], in their study “Racial and Ethnic Differences in Sodium Sources and Sodium Reduction Behaviors Among U.S. Adults: NHANES 2017–2020 (Pre-Pandemic)”, found significant variation in sodium intake among racial and ethnic groups. These differences are largely explained by variations in food preferences, cooking habits, and cultural cuisines. For instance, Asian American adults are more likely to use salt during cooking but less likely to add salt at the table, influencing total sodium exposure.
 
-Finally, the **third question** examines whether sugar intake varies by income level. In 2024, 14.5 million people in the U.S. (4.3%) were unable to afford a healthy diet (World Bank Food Prices for Nutrition DataHub, 2024). Lewis et al. (2023) found that the price of healthy foods increased more rapidly than that of unhealthy alternatives during the pandemic. Consistent with this, the Cleveland Clinic National Survey (2023) reported that 46% of Americans view the high cost of healthy food as the primary obstacle to maintaining a healthier diet. Similarly, research from the University of Warwick (2022) indicates that Americans have increasingly substituted expensive, nutrient-rich foods with cheaper, sugary, and ultra-processed options.
+Finally, the **third question** examines whether sugar intake varies by income level. In 2024, 14.5 million people in the U.S. (4.3%) were unable to afford a healthy diet (World Bank Food Prices for Nutrition DataHub, [@world_bank_group_food_2024]). [@lewis_healthy_2023] found that the price of healthy foods increased more rapidly than that of unhealthy alternatives during the pandemic. Consistent with this, the [@clev_americans_2023] reported that 46% of Americans view the high cost of healthy food as the primary obstacle to maintaining a healthier diet. Similarly, research from the University of Warwick study by [@pancrazi_how_2022] indicates that Americans have increasingly substituted expensive, nutrient-rich foods with cheaper, sugary, and ultra-processed options.
 
 Using a sample of U.S. adults aged 20 and older collected between 2021 and 2023, we find that men consume more protein on average than women, Asian Americans have higher sodium intake compared to several other ethnic groups, and low-income individuals (below 300% of the poverty line) consume more sugar on average than high-income individuals (above 300%)
 
 # Data
-**What We Eat in America Dietary Data? National Health and Nutrition Examination Survey (NHANES)**
+**What We Eat in America Dietary Data? National Health and Nutrition Examination Survey (NHANES) August 2021-August 2023**
 
-August 2021-August 2023
+The “What We Eat in America” (WWEIA) dietary data, collected between August 2021 and August 2023, form part of the National Health and Nutrition Examination Survey (NHANES) conducted by the U.S. Centers for Disease Control and Prevention (CDC) in collaboration with the U.S. Department of Agriculture (USDA). This dataset provides nationally representative information on the types and quantities of foods and beverages consumed by individuals in the United States.[@u.s._department_of_agriculture_agricultural_research_service_what_2024]
 
-The “What We Eat in America” (WWEIA) dietary data, collected between August 2021 and August 2023, form part of the National Health and Nutrition Examination Survey (NHANES) conducted by the U.S. Centers for Disease Control and Prevention (CDC) in collaboration with the U.S. Department of Agriculture (USDA). This dataset provides nationally representative information on the types and quantities of foods and beverages consumed by individuals in the United States.
-
-Data were collected through telephone-administered 24-hour dietary recalls using the USDA’s 5-Step Automated Multiple-Pass Method (AMPM), a structured interview protocol designed to enhance accuracy and reduce underreporting. Each participant completed up to two dietary recalls, in which they reported all foods, beverages (including water), and supplements consumed from midnight to midnight on the previous day.
+Data were collected through telephone-administered 24-hour dietary recalls using the USDA’s 5-Step Automated Multiple-Pass Method (AMPM), a structured interview protocol designed to enhance accuracy and reduce underreporting. Each participant completed up to two dietary recalls, in which they reported all foods, beverages (including water), and supplements consumed from midnight to midnight on the previous day. [@williams_what_2025]
 
 Nutrient values were derived from the USDA Food and Nutrient Database for Dietary Studies (FNDDS), which provides standardized nutrient composition data for thousands of food items. The 2021–2023 WWEIA cycle was based on an updated survey design and modified questionnaires introduced after the COVID-19 pandemic to reflect changes in food consumption patterns and supply chains.
 
@@ -1306,5 +1308,6 @@ Our results show clear differences across these groups:
 In summary, these findings suggest that dietary habits in the U.S. continue to differ by gender, ethnicity, and income, even in the post-pandemic period. Addressing these nutritional gaps will require strategies that consider both cultural preferences and economic barriers to healthy eating.
 
 
+# References
 
 
