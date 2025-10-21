@@ -1,0 +1,1310 @@
+---
+title: "Do Common Nutrition Beliefs Still Hold?"
+author: "Team-1"
+date: "2025-10-21"
+output:
+   rmdformats::readthedown:
+     code_folding: hide
+     number_sections: true
+     toc_depth: 3
+     toc_float: yes
+---
+```{r init, include=F}
+library(arrow)
+library(ggplot2)
+library(ezids)
+library(labelled)
+library(gtsummary)
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(knitr)
+library(patchwork)
+library(vctrs)
+library(tibble)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup")
+options(scientific=T, digits = 3) 
+
+# Set the root directory for all code chunks (important for reading files)
+knitr::opts_knit$set(root.dir = "/Users/akashreddyashanna/Desktop/Fall 2025/Intro to DS/DataScienceProject")
+```
+
+# Introduction
+
+The COVID-19 pandemic and subsequent geopolitical conflicts have profoundly affected populations worldwide, influencing multiple aspects of daily life—including dietary habits. Research indicates that these crises led to notable changes in food consumption patterns. For example, Pandey et al. (2023) found that in India, individuals shifted toward diets with more fruits, vegetables, and home-cooked meals. Similarly, the Brown University Health Department (2023) reported that Americans spent more time cooking at home during the pandemic, which generally promoted healthier eating habits.
+
+However, these global shocks also exacerbated inequalities in access to nutritious food. The price of healthy food increased more sharply than that of ultra-processed and high-sugar foods (Lewis et al., 2023). Supply chain disruptions—particularly those linked to the reduction of cereal exports from Ukraine following the Russian invasion—further limited access to affordable, nutrient-rich foods. As a result, many individuals have turned to more accessible but less nutritious food options.
+
+Building on these dynamics, this study aims to revisit and test several longstanding hypotheses about dietary patterns, assessing whether the COVID-19 pandemic and recent global economic shocks have altered previous trends.
+
+# SMART Questions
+
+This study explores three central research questions. The **first question** examines whether women, on average, consume less protein than men in the United States. According to the U.S. survey “What We Eat in America?” (2015–2016), adult males consumed approximately one-third more protein than adult females. To the best of our knowledge, there is no post-pandemic research confirming whether this gender gap in protein intake persists. International evidence suggests similar trends. In Italy, men tend to consume more meat and processed meats, while women favor plant-based protein sources, resulting in lower overall protein intake among women (Lombardo, 2025). Likewise, in China, men consume more protein in absolute grams than women (Zhao, Sun, & Su, 2020).
+
+The **second question** investigates whether sodium intake differs across ethnic groups in the U.S. Cheng et al. (2025), in their study “Racial and Ethnic Differences in Sodium Sources and Sodium Reduction Behaviors Among U.S. Adults: NHANES 2017–2020 (Pre-Pandemic)”, found significant variation in sodium intake among racial and ethnic groups. These differences are largely explained by variations in food preferences, cooking habits, and cultural cuisines. For instance, Asian American adults are more likely to use salt during cooking but less likely to add salt at the table, influencing total sodium exposure.
+
+Finally, the **third question** examines whether sugar intake varies by income level. In 2024, 14.5 million people in the U.S. (4.3%) were unable to afford a healthy diet (World Bank Food Prices for Nutrition DataHub, 2024). Lewis et al. (2023) found that the price of healthy foods increased more rapidly than that of unhealthy alternatives during the pandemic. Consistent with this, the Cleveland Clinic National Survey (2023) reported that 46% of Americans view the high cost of healthy food as the primary obstacle to maintaining a healthier diet. Similarly, research from the University of Warwick (2022) indicates that Americans have increasingly substituted expensive, nutrient-rich foods with cheaper, sugary, and ultra-processed options.
+
+Using a sample of U.S. adults aged 20 and older collected between 2021 and 2023, we find that men consume more protein on average than women, Asian Americans have higher sodium intake compared to several other ethnic groups, and low-income individuals (below 300% of the poverty line) consume more sugar on average than high-income individuals (above 300%)
+
+# Data
+**What We Eat in America Dietary Data? National Health and Nutrition Examination Survey (NHANES)**
+
+August 2021-August 2023
+
+The “What We Eat in America” (WWEIA) dietary data, collected between August 2021 and August 2023, form part of the National Health and Nutrition Examination Survey (NHANES) conducted by the U.S. Centers for Disease Control and Prevention (CDC) in collaboration with the U.S. Department of Agriculture (USDA). This dataset provides nationally representative information on the types and quantities of foods and beverages consumed by individuals in the United States.
+
+Data were collected through telephone-administered 24-hour dietary recalls using the USDA’s 5-Step Automated Multiple-Pass Method (AMPM), a structured interview protocol designed to enhance accuracy and reduce underreporting. Each participant completed up to two dietary recalls, in which they reported all foods, beverages (including water), and supplements consumed from midnight to midnight on the previous day.
+
+Nutrient values were derived from the USDA Food and Nutrient Database for Dietary Studies (FNDDS), which provides standardized nutrient composition data for thousands of food items. The 2021–2023 WWEIA cycle was based on an updated survey design and modified questionnaires introduced after the COVID-19 pandemic to reflect changes in food consumption patterns and supply chains.
+
+The following dietary variables were included in the analysis:
+Individual ID, USDA 8-digit food code, **Energy (kcal)**, **Protein (g)**, **Carbohydrates (g)**, **Total Sugars (g)**, **Dietary Fiber (g)**, **Total Fat (g)**, and **Sodium (mg)**.
+
+To generate individual-level daily consumption data, all foods reported under the USDA 8-digit codes were aggregated by summing nutrient quantities per individual. This approach provides the total daily nutrient intake per participant, allowing for direct comparisons across individuals and demographic groups. Aggregation by total intake—rather than mean or per-meal intake—was chosen to capture complete daily nutritional exposure, consistent with standard NHANES analytical practices. Future analyses could disaggregate these data by food category (e.g., cereals or processed foods) to examine the consumption of items most affected by recent price increases.
+
+Demographic information was obtained from NHANES demographic files and included:
+**Individual ID**, **Gender**, **Age**, **Race/Hispanic origin (including Non-Hispanic Asian)**, **Education level (adults 20+)**, **Marital status**, **Household size**, and **Family income-to-poverty ratio**.
+
+Following USDA recommendations, the analytic sample was restricted to adults aged 20 years and older to minimize bias from unequal age distributions across ethnic groups, as children’s food intake is inherently lower. Pregnant women were excluded because of their distinct nutritional requirements and dietary behaviors.
+
+To ensure national representativeness, NHANES provides dietary day one sample weights (WTDRD1), accounting for survey design, oversampling, and non response. However, the results reported in this report do not included this weights in the process. Nonetheless, we identified that the distribution of demographic groups matches what Consensus Economics reports for the U.S. (See Exploratory Data Analysis for more details).
+
+After merging the dietary and demographic components, the final analytic sample consisted of 4,760 individuals and 36 variables, representing U.S. adults between August 2021 and August 2023.
+
+While the WWEIA-NHANES data provide a robust and nationally representative source for dietary assessment, several limitations should be acknowledged. First, the 24-hour dietary recall method relies on self-reported information, which is subject to recall bias and under reporting or over reporting, particularly for foods perceived as unhealthy. Second, each participant’s recall represents only one or two days of intake, which may not fully capture habitual dietary patterns or seasonal variations. Third, the use of aggregated nutrient totals does not account for meal timing or contextual factors, such as eating location or preparation method. Finally, while NHANES weighting adjusts for survey design and nonresponse, subgroup analyses—such as by ethnicity or income—may still be affected by smaller sample sizes and sampling variability.
+
+Despite these limitations, WWEIA-NHANES remains one of the most comprehensive and reliable datasets for examining dietary intake and its relationship to demographic and socioeconomic characteristics in the U.S. population.
+
+**Load processed analysis file**
+Below we load the processed parquet we created earlier (proc_data/demo_foods.parquet) and do a quick sanity check so we know what’s in memory.
+
+# Reading the parquet file
+```{r}
+# NOTE: the file should be in the working dir of the proc data or adjust the path
+getwd()  
+# This is the processed file we created earlier in the pipeline
+food <- read_parquet("proc_data/demo_foods.parquet")
+
+# Quick peek to make sure it loaded
+head(food)
+```
+
+```{r}
+# Relabel key nutrient totals for easier plotting (MUST come before plots)
+nutrient_df <- food |>
+  rename(
+    `Calories (kcal)`   = DR1IKCAL_sum,
+    `Protein (g)`       = DR1IPROT_sum,
+    `Carbohydrates (g)` = DR1ICARB_sum,
+    `Sugars (g)`        = DR1ISUGR_sum,
+    `Fiber (g)`         = DR1IFIBE_sum,
+    `Total Fat (g)`     = DR1ITFAT_sum,
+    `Sodium (mg)`       = DR1ISODI_sum
+  )
+```
+
+
+# Exploratory Data Analysis
+## Demographics (Categorical Summary)
+
+```{r}
+# selecting a few categorical vars we care about
+# gives us a nice overview of N and key characteristics
+demo_cat_tbl <- food |>
+  select(RIAGENDR, RIDRETH3, DMDEDUC2, DMDMARTZ) |>
+  tbl_summary(
+    type = list(
+      everything() ~ "categorical"
+    ),
+    missing = "ifany"   # show missing if present
+  ) |>
+  bold_labels()
+
+demo_cat_tbl
+
+# Calculate average age in the sample
+avg_age <- mean(food$RIDAGEYR, na.rm = TRUE)
+sd_age <- sd(food$RIDAGEYR, na.rm = TRUE)
+n_age <- sum(!is.na(food$RIDAGEYR))
+```
+
+The table shows counts and percentages by Gender, Race/Ethnicity, Education, and Marital status.
+
+- The mean age in the NHANES sample is approximately `r round(mean(food$RIDAGEYR, na.rm = TRUE), 1)` years,  with a standard deviation of `r round(sd(food$RIDAGEYR, na.rm = TRUE), 1)`,  based on `r sum(!is.na(food$RIDAGEYR))` participants with non-missing age data. This largely represents U.S. consensus data.
+
+- The sample is however  older on average than the overall U.S. population, but this is not a problem for our analysis. We are specifically interested in the adult population, and it is reasonable to assume that younger children largely follow their parents’ dietary patterns.
+
+## Demographics (Continuous Summary)
+Next a compact summary (mean, SD, min, max, and missing) for age, household size, and income-to-poverty ratio.
+
+```{r}
+demo_cont_tbl <- food |>
+  select(RIDAGEYR, DMDHHSIZ, INDFMPIR) |>
+  tbl_summary(
+    type = list(everything() ~ "continuous2"),
+    statistic = all_continuous() ~ c(
+      "Observations = {N_obs}",
+      "Missing = {N_miss}",
+      "Mean (SD) = {mean} ({sd})",
+      "Min, Max = {min}, {max}"
+    ),
+    digits = everything() ~ 2
+  ) |>
+  bold_labels()
+
+demo_cont_tbl
+```
+
+- Age: The average age is about 55 years (SD = 16.8), ranging from 20 to 80 years, showing that our sample mainly consists of middle-aged and older adults.
+
+- Household size: Participants live in households of around 2.5 people on average (SD = 1.4), which is consistent with typical U.S. household structures
+
+- Income-to-poverty ratio: The mean ratio of 3.0 (SD = 1.7) suggests that, on average, respondents earn roughly three times the federal poverty threshold, though 551 observations are missing for this variable.
+
+Overall, the dataset represents a relatively older and economically stable adult population, appropriate for analyzing dietary patterns.
+
+## Nutrients - Overall Summary
+```{r}
+# Build a clean frame with readable nutrient names
+nutrients <- food |>
+  transmute(
+    `Calories (kcal)`   = DR1IKCAL_sum,
+    `Protein (g)`       = DR1IPROT_sum,
+    `Carbohydrates (g)` = DR1ICARB_sum,
+    `Sugars (g)`        = DR1ISUGR_sum,
+    `Fiber (g)`         = DR1IFIBE_sum,
+    `Total Fat (g)`     = DR1ITFAT_sum,
+    `Sodium (mg)`       = DR1ISODI_sum
+  )
+
+tbl_nutrients_overall <- nutrients |>
+  gtsummary::tbl_summary(
+    type      = everything() ~ "continuous2",
+    statistic = all_continuous() ~ c(
+      "Mean (SD) = {mean} ({sd})",
+      "Median [IQR] = {median} [{p25}, {p75}]",
+      "Min, Max = {min}, {max}",
+      "Missing = {N_miss}"
+    ),
+    digits    = everything() ~ 1
+  ) |>
+  gtsummary::bold_labels() |>
+  gtsummary::modify_header(label ~ "**Nutrient**") |>
+  gtsummary::modify_spanning_header(everything() ~ "**Overall**")
+
+tbl_nutrients_overall
+```
+
+- The mean sodium intake was ~3,068 mg per day, which exceeds the Food and Drug Administration’s guideline of 2,300 mg/day.
+
+- Mean protein intake (~74 g/day) is within typical recommended ranges (for example ~0.8 g/kg body weight) for most adults.
+
+- Mean sugar intake (~95.6 g/day) is well above the World Health Organization recommendation of < 50 g/day, indicating potential excess.
+
+
+# Q1: Do women eat less protein than men (on average)?
+
+## Protein Distributions
+
+Here are three quick visuals to see whether protein looks skewed, if outliers exist, and how far we are from normality (useful context for t-tests).
+
+**1) Histogram — Protein (overall)**
+```{r}
+p_hist <- ggplot(nutrient_df, aes(`Protein (g)`)) +
+  geom_histogram(
+    bins = 40,
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Day 1 Protein Intake",
+    x = "Protein (g)",
+    y = "Count"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),             # optional: lighten grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # title
+    axis.title = element_text(size = 14, face = "bold"),               # axis titles
+    axis.text = element_text(size = 12)                                # axis labels
+  )
+
+p_hist
+```
+
+- Most respondents consume between 50 g and 100 g of protein per day, with a clear right-skewed pattern — meaning a smaller number of individuals report very high intakes (above 150 g).
+
+- The concentration around 70–80 g reflects typical adult protein consumption levels in the U.S.
+
+
+**2) Boxplot — Protein (overall)**
+```{r}
+p_box <- ggplot(nutrient_df, aes(y = `Protein (g)`)) +
+  geom_boxplot(
+    fill = "chocolate",
+    color = "chocolate4",
+    outlier.alpha = 0.5
+  ) +
+  labs(
+    title = "Boxplot: Day 1 Protein Intake",
+    x = "",
+    y = "Protein (g)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),             # optional: lighten grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # title
+    axis.title = element_text(size = 14, face = "bold"),               # axis titles
+    axis.text = element_text(size = 12)                                # axis labels
+  )
+
+p_box
+```
+
+- The median intake (center line of the box) is around 70–75 g, aligning with the histogram’s peak.
+
+- The interquartile range (IQR), the middle 50% of observations, spans roughly from 50 g to 100 g, indicating moderate variation among most participants.
+
+- Several outliers extend well beyond 150 g, with a few exceeding 400 g, suggesting a small number of individuals reporting unusually high protein intakes (possibly athletes or high-meat diets).
+
+- The lower whisker reaches close to 0, meaning some individuals report minimal protein intake on that day.
+
+**3) Q–Q Plot — Protein (overall)**
+```{r}
+p_qq <- ggplot(nutrient_df, aes(sample = `Protein (g)`)) +
+  stat_qq(alpha = 0.5) +
+  stat_qq_line(linewidth = 0.7) +
+  labs(
+    title = "Q–Q Plot: Day 1 Protein Intake",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),             # optional: lighten grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # title
+    axis.title = element_text(size = 14, face = "bold"),               # axis titles
+    axis.text = element_text(size = 12)                                # axis labels
+  )
+
+p_qq
+```
+
+- The strong upward curvature in the upper tail shows clear right-skewness, with many individuals have higher than expected protein intakes compared to a normal distribution.
+
+- The lower tail stays close to the reference line, suggesting fewer extremely low outliers.
+
+- The overall deviation from the straight line confirms that protein intake is not normally distributed.
+
+In essence, the data are heavily right-skewed, consistent with the histogram and boxplot, meaning that most people consume moderate amounts of protein while a smaller group reports very high values.
+
+## Protein by Gender Distributions
+
+First, we create a simple gender label and summarize mean and 95% CI.
+```{r}
+# make a simple gender label (1 = Male, 2 = Female in NHANES)
+gender_df <- nutrient_df |>
+  mutate(gender = case_when(
+    RIAGENDR == 1 ~ "Male",
+    RIAGENDR == 2 ~ "Female",
+    .default = NA_character_
+  ))
+
+prot_gender_summary <- gender_df |>
+  filter(!is.na(gender)) |>
+  group_by(gender) |>
+  summarise(
+    n = n(),
+    mean = mean(`Protein (g)`, na.rm = TRUE),
+    sd = sd(`Protein (g)`, na.rm = TRUE),
+    se = sd / sqrt(n),
+    ci_low = mean - 1.96 * se,
+    ci_high = mean + 1.96 * se,
+    .groups = "drop"
+  )
+
+prot_gender_summary
+```
+
+- The sample is divided into males and females based on the NHANES gender variable (RIAGENDR).
+
+- For each group, the mean, standard deviation, and 95% confidence interval (CI) of protein intake are computed.
+
+- Results from NHANES data show that men consume substantially more protein than women, both in absolute grams and relative to body weight.
+
+- The computed standard errors (SE) and confidence intervals illustrate the precision of these estimates; narrower intervals indicate more reliable group means.
+
+**Mean ± 95% CI (by Gender)**
+```{r protein-ci-plot, echo=TRUE, fig.width=8, fig.height=6}
+# Plot mean protein intake by gender with 95% confidence intervals
+p_ci <- ggplot(prot_gender_summary, aes(x = gender, y = mean, color = gender)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = ci_low, ymax = ci_high),
+                width = 0.12, linewidth = 0.8) +
+  labs(
+    title = "Mean Protein Intake (95% CI) by Gender",
+    x = "",
+    y = "Protein (g)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text  = element_text(size = 6),
+    legend.position = "none"
+  )
+  
+
+# Display the plot in the knitted document
+p_ci
+```
+
+- Men have a clearly higher mean protein intake (around 85 g per day) than women (around 65 g per day).
+
+- The non-overlapping confidence intervals suggest that this gender difference is statistically significant — men consume more protein on average than women.
+
+- The small CI ranges indicate low variability.
+
+**Overlapping Histogram — Protein by Gender (Red/Blue)**
+```{r protein-hist-gender, echo=TRUE, fig.width=8, fig.height=5}
+# 1) Make a clean gender factor (1 = Male, 2 = Female)
+food <- food |>
+  dplyr::mutate(gender = factor(RIAGENDR, levels = c(1, 2),
+                                labels = c("Male", "Female")))
+
+# 2) Overlapping histogram (red/blue)
+ggplot(dplyr::filter(food, !is.na(gender)),
+       aes(x = DR1IPROT_sum, fill = gender)) +
+  geom_histogram(breaks = seq(0, 500, by = 10),
+                 position = "identity",   # overlap instead of stack
+                 alpha = 0.55,            # see-through bars
+                 color = "black") +
+  scale_fill_manual(values = c(Male = "#1f77b4", Female = "#e74c3c"),
+                    name = "Gender") +
+  labs(title = "Distribution of Daily Protein Intake by Gender",
+       x = "Protein Intake (grams)", y = "Frequency") +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text  = element_text(size = 6)) +
+  theme(legend.position = "top")
+```
+
+- The distribution for both men and women is right-skewed, meaning most individuals consume moderate amounts of protein, while a few consume much higher quantities.
+
+- Men (blue) tend to consume more protein overall, their distribution shifts slightly to the right compared to women, with a noticeable tail extending toward higher intake levels.
+
+- Women (red) show a lower mean protein intake, clustering around 50–80 grams per day, whereas men more frequently fall between 70–110 grams per day.
+
+- Both distributions overlap substantially, indicating shared dietary patterns, but the difference in central tendency aligns with physiological and caloric differences between genders.
+
+Overall, the figure illustrates that while protein consumption patterns are broadly similar, men on average consume more protein per day than women.
+
+
+**Overall Summary**
+
+Summarizing the findings in four graphs using patchwork
+
+```{r protein-multipanel, echo=TRUE, message=FALSE, warning=FALSE, fig.width=12, fig.height=8}
+
+# --- 1) tidy data -----------------------------------------------------------
+# RIAGENDR: 1 = Male, 2 = Female; DR1IPROT_sum = total protein (g)
+prot_df <- food %>%
+  transmute(
+    gender = factor(if_else(RIAGENDR == 1, "Male", "Female"),
+                    levels = c("Male", "Female")),
+    protein = DR1IPROT_sum
+  ) %>%
+  filter(!is.na(gender), !is.na(protein))
+
+# --- 2) compute mean + 95% CI (for point+CI panel) -------------------------
+prot_gender_summary <- prot_df %>%
+  group_by(gender) %>%
+  summarise(
+    n   = n(),
+    mean = mean(protein),
+    sd   = sd(protein),
+    se   = sd / sqrt(n),
+    tcrit = qt(0.975, df = n - 1),
+    ci_low  = mean - tcrit * se,
+    ci_high = mean + tcrit * se,
+    .groups = "drop"
+  )
+
+# --- 3) four complementary views -------------------------------------------
+
+# A) Mean with 95% CI (clean effect view)
+p_ci <- ggplot(prot_gender_summary, aes(x = gender, y = mean, color = gender)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = ci_low, ymax = ci_high), width = 0.15, linewidth = 0.9) +
+  labs(title = "Mean Protein (95% CI) by Gender", x = NULL, y = "Protein (g)") +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text  = element_text(size = 6),
+    legend.position = "none"
+  )
+
+# B) Boxplot + mean dots (distribution + center)
+p_box <- ggplot(prot_df, aes(x = gender, y = protein, fill = gender)) +
+  geom_boxplot(outlier.alpha = 0.25) +
+  stat_summary(fun = mean, geom = "point", shape = 21, size = 2.5, fill = "white") +
+  labs(title = "Distribution (Boxplot) + Mean", x = NULL, y = "Protein (g)") +
+theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text  = element_text(size = 6),
+    legend.position = "none"
+  )
+
+# C) Density overlap (shape of distributions)
+p_dens <- ggplot(prot_df, aes(x = protein, fill = gender)) +
+  geom_density(alpha = 0.35) +
+  labs(title = "Density Overlap", x = "Protein (g)", y = "Density") +
+ theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text  = element_text(size = 6),
+    legend.position = "none"
+  )
+
+# D) Violin + jitter (spread + individual points sample)
+set.seed(42)
+p_viol <- ggplot(prot_df %>% sample_n(min(1500, n())),  # subsample for readability
+                 aes(x = gender, y = protein, fill = gender)) +
+  geom_violin(trim = TRUE, alpha = 0.7) +
+  geom_jitter(width = 0.15, alpha = 0.25, size = 0.7) +
+  stat_summary(fun = mean, geom = "point", shape = 21, size = 2.5, fill = "white") +
+  labs(title = "Violin + Jitter (Subset)", x = NULL, y = "Protein (g)") +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text  = element_text(size = 6),
+    legend.position = "none"
+  )
+
+# --- 4) assemble into one figure -------------------------------------------
+(p_ci | p_box) / (p_dens | p_viol)
+```
+
+This four-panel visualization provides a comprehensive view of daily protein intake by gender, combining several perspectives to illustrate both central tendency and distribution.
+
+- Top-left (Mean Protein Intake with 95% CI): Men consume significantly more protein on average than women, with non-overlapping confidence intervals. This indicates a statistically robust difference between the groups.
+
+- Top-right (Boxplot + Mean):Both genders show a similar range of intake, but the median and mean values are clearly higher for men.
+
+- Bottom-left (Density Overlap):The distribution for men (red) is shifted to the right, confirming a higher average intake and greater spread. The female distribution (blue) peaks earlier, around 60–80g/day, while men’s density is wider and extends beyond 150g/day.
+
+- Bottom-right (Violin + Jitter):This view highlights the shape and variability of intake more clearly. Both groups show right-skewed distributions, but men’s values are both higher and more dispersed. Individual jittered points indicate considerable within-group variation.
+
+**Overall interpretation:**
+
+Across all visualizations, the pattern is consistent—men have a higher mean and wider spread of daily protein intake than women, with women’s intake more concentrated around moderate levels.
+
+
+## Hypothesis Testing 
+
+We’ll run a **one-sided, two-sample Welch t-test** where the alternative hypothesis is that **men > women** in mean daily protein intake (grams).
+
+```{r setup-hypothesis, message=FALSE, warning=FALSE}
+
+# Convert gender to readable factor
+food$RIAGENDR <- factor(food$RIAGENDR,
+                        levels = c(1, 2),
+                        labels = c("Male", "Female"))
+
+```
+
+### T-Test (one-sided: Male > Female)
+
+```{r}
+tres <- t.test(DR1IPROT_sum ~ RIAGENDR,
+               data = food,
+               var.equal = FALSE,     # Welch (default)
+               alternative = "greater")  # mean(Male) > mean(Female)
+tres
+```
+
+- The test statistic (t = 19.578) is very large, and the p-value is less than 2.2e-16, far below any conventional significance threshold (e.g., < 0.05).
+
+- This means we strongly reject the null hypothesis that the two groups have equal mean protein intake.
+
+- The alternative hypothesis — that men (group 1) consume more protein than women (group 2) — is supported.
+
+- The 95 % confidence interval for the difference in means starts at 20.41 g and extends to infinity, confirming that the difference is both positive and substantial.
+
+**Tidy Summary Table**
+```{r}
+tres_tidy <- tidy(tres) %>%
+  mutate(across(where(is.numeric), round, 2)) %>%
+  rename(
+    "Mean Male" = estimate1,
+    "Mean Female" = estimate2,
+    "Mean Difference (Male - Female)" = estimate,
+    "t Statistic" = statistic,
+    "p Value (one-sided)" = p.value,
+    "CI Lower" = conf.low,
+    "CI Upper" = conf.high
+  ) %>%
+  select(`Mean Male`, `Mean Female`, `Mean Difference (Male - Female)`,
+         `CI Lower`, `CI Upper`, `t Statistic`, `p Value (one-sided)`)
+
+tres_tidy
+```
+
+### ANOVA (Cross-check)
+A simple one-way ANOVA with gender confirms the same story (it’s equivalent to a two-sided test of equal means).
+```{r}
+anovares <- aov(DR1IPROT_sum ~ RIAGENDR, data = food)
+summary(anovares)
+```
+
+- The associated p-value is effectively zero, far below the standard 0.05 threshold: This means the difference in mean protein intake between men and women is statistically significant.
+
+- The Sum of Squares shows that gender explains a substantial portion of the total variability in protein intake
+
+**Overall Interpretation of Results:**
+
+Both the **t-test and ANOVA confirm a highly significant gender effect on protein intake**. In short, **gender is a strong and statistically significant predictor of daily protein intake** in the NHANES dataset.
+
+A potential limitation lies in **recall bias**, as the 24-hour dietary recalls depend on participants’ memory and may lead to inaccurate reporting of portion sizes. Moreover, using **only a single-day recall** cannot fully capture individuals’ usual intake patterns.
+
+Nevertheless, given the strength and consistency of the statistical results, **we can state with high confidence** that women, on average, consume less protein than men.
+
+# Q2: Is Sodium Intake Different Among Ethnic Groups?
+
+## Sodium
+
+
+
+```{r}
+#Making sure ethnic group is a factor with readable labels
+food$RIDRETH3 <- factor(food$RIDRETH3,
+                        levels = c(1, 2, 3, 4, 6, 7),
+                        labels = c("Mexican American",
+                                   "Other Hispanic",
+                                   "Non-Hispanic White",
+                                   "Non-Hispanic Black",
+                                   "Non-Hispanic Asian",
+                                   "Other Race - Including Multi-Racial"))
+```
+
+**Summary Statistics**
+```{r}
+sodium_summary <- food %>%
+  group_by(RIDRETH3) %>%
+  summarise(
+    mean_sodium = mean(DR1ISODI_sum, na.rm = TRUE),
+    sd_sodium   = sd(DR1ISODI_sum, na.rm = TRUE),
+    median_sodium = median(DR1ISODI_sum, na.rm = TRUE),
+    Sample_Size = n()
+  )
+xkabledply(sodium_summary, title = "Summary Statistics: Sodium Intake by Ethnic Groups")
+```
+
+- We can see the mean, standard deviation , median and sample size for each group. From these numbers, we notice that Non-Hispanic Asians tend to have a higher mean sodium intake compared to other groups.
+
+- This summary statistics give us an initial sense that there may be real differences between groups,  but to confirm that, we’ll need visualize the data and later test statistically.
+
+**1) Histogram - Sodium(overall)**
+```{r}
+hsodium <- ggplot(food, aes(DR1ISODI_sum)) +
+  geom_histogram(
+    breaks=seq(0, 21000, by = 1000),
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Daily Sodium Intake",
+    x = "Total Sodium (mg)",
+    y = "Frequency"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),             # optional: lighten grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # title
+    axis.title = element_text(size = 14, face = "bold"),               # axis titles
+    axis.text = element_text(size = 12)                                # axis labels
+  )
+
+# Display the plot
+hsodium
+```
+
+- Most people consume between 1000 mg and 4000 mg of sodium per day, with a heavily right-skewed pattern which means that a smaller number of people (outliers) have very high intakes (above 5000mg).
+
+- The concentration around 3400mg reflects typical adult sodium consumption levels in the U.S.
+
+
+**2) Boxplot - Sodium(overall)**
+```{r}
+bsodium <- ggplot(food, aes(y = DR1ISODI_sum)) +
+  geom_boxplot(
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9,
+    outlier.color = "brown3",
+    outlier.shape = 16,
+    outlier.size = 2
+  ) +
+  labs(
+    title = "Boxplot of Daily Sodium Intake",
+    x = "",
+    y = "Total Sodium (mg)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12)
+  )
+
+#Display the plot
+bsodium
+```
+
+- The median intake (center line of the box) is around 2770 mg, aligning with the histogram’s peak.
+
+- The interquartile range (IQR), the middle 50% of observations, spans roughly from 1000 g to 4000 mg, indicating moderate variation among most participants.
+
+- It shows the outliers stretching far above the upper whisker beyond 5000 mg, with a few exceeding 10000 mg, suggesting a small number of individuals reporting unusually high sodium intakes.
+
+**3)Q-Q Plot - Sodium(overall)**
+```{r}
+par(
+  bg = "antiquewhite",   # background color
+  col.axis = "black",    # axis color
+  col.lab = "black",     # label color
+  col.main = "black",    # title color
+  font.main = 2,         # bold title
+  cex.main = 1.5,        # title size
+  cex.lab = 1.3,         # axis title size
+  cex.axis = 1.1         # axis label size
+)
+
+# Q-Q plot for Sodium Intake
+qqnorm(
+  food$DR1ISODI_sum,
+  main = "Q-Q Plot of Daily Sodium Intake",
+  pch = 19,               # filled points
+  col = "chocolate4",     # point color
+  cex = 0.8               # point size
+)
+qqline(
+  food$DR1ISODI_sum,
+  col = "brown3",         # line color
+  lwd = 2                 # line thickness
+)
+```
+
+- The Q–Q plot confirms the distribution deviates strongly from normality, especially in the upper tail which shows that sodium intake varies widely, with some individuals consuming exceptionally high levels.
+
+- The lower tail stays close to the reference line, suggesting fewer extremely less outliers.
+
+- The overall deviation from the straight line confrims that sodium intake is not normally distributed.
+
+## Sodium by Ethnic Groups Distributions
+
+**Boxplot - Sodium by Ethnic Groups**
+
+```{r}
+
+box_sodium_ethnic <- ggplot(food, aes(x = RIDRETH3, y = DR1ISODI_sum, fill = RIDRETH3)) +
+  geom_boxplot(
+    alpha = 0.8, 
+    color = "chocolate4"
+    ) +
+  scale_fill_brewer(
+    palette = "Set3"
+    ) +
+  labs(
+    title = "Boxplot of Sodium Intake by different Ethnic Groups",
+    x = "Ethnic Groups",
+    y = "Sodium Intake (mg)"
+    ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text  = element_text(size = 6),
+    legend.position = "none"
+  )
+# Display the plot
+box_sodium_ethnic
+```
+
+- We can clearly see that the Non-Hispanic Asian group has a higher median sodium intake compared to others, while Hispanic and White groups appear to have lower overall sodium levels.
+
+- The variation also differs slightly that means some groups have wider spreads in sodium consumption, likely due to diverse diets within those groups.
+
+
+**Barplot - Sodium by Ethnic Groups**
+
+```{r}
+bar_sodium_ethnic <- ggplot(sodium_summary, aes(x = RIDRETH3, y = mean_sodium, fill = RIDRETH3)) +
+  geom_col(
+    alpha = 0.8, 
+    color = "chocolate4"
+    ) +
+  scale_fill_brewer(
+    palette = "Set3"
+    ) +
+  labs(
+    title = "Barplot of Average Sodium Intake by different Ethnic Groups",
+    x = "Ethnic Groups",
+    y = "Mean Sodium Intake (mg)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text  = element_text(size = 6),
+    legend.position = "none"
+  )
+
+# Display the plot
+bar_sodium_ethnic
+```
+
+-This barplot summarizes the average sodium intake for each ethnic group.We can see again that Non-Hispanic Asians have the highest average sodium intake, followed by Non-Hispanic Whites, while Hispanic and Black groups show lower averages comparatively.
+
+- This pattern aligns with earlier research, and suggests that sodium consumption is not evenly distributed across ethnicity, which gives us a good reason to test whether these differences are statistical significant.
+
+## Hypothesis Testing
+
+Since we have one independent variable - ethnicity with multiple groups and one dependent variable - sodium intake the most suitable statistical method is a **One-Way ANOVA**.This test helps us determine whether the differences in mean sodium intake that we observed visually are statistically meaningful or just due to random chance.
+
+**Null Hypothesis (H0): There is no significant difference in mean sodium intake among ethnic groups.**
+
+**Alternative Hypothesis (H1) : There is a significant difference in mean sodium intake among at least one ethnic groups.**
+
+### ANOVA Test
+```{r}
+anova_result <- aov(DR1ISODI_sum ~ RIDRETH3, data = food)
+anova_result
+xkabledply(anova_result, title = "ANOVA Summary: Sodium Intake by Ethnic Groups")
+```
+
+- The results shows a significant p-value less than 0.05, which means we can reject the null hypothesis, indicating that there is indeed a statistically significant difference in sodium intake among at least one of the ethnic groups.
+
+To know which ethnic groups differ, we are using Post-hoc Tukey HSD.
+
+### Post-hoc Tukey HSD Test
+```{r}
+tukeyAoV <- TukeyHSD(anova_result)
+tukeyAoV
+
+# Renaming the column names
+tukey_table <- tidy(tukeyAoV) %>%
+  rename(
+    Comparison = contrast,
+    Mean_Difference = estimate,
+    Lower_95CI = conf.low,
+    Upper_95CI = conf.high,
+    Adjusted_p = adj.p.value
+  ) %>%
+  mutate(Significance = ifelse(Adjusted_p < 0.05, "Significant", "Not Significant"))
+
+# Print clean formatted table
+kable(
+  tukey_table,
+  caption = "Tukey HSD Post-hoc Test for Sodium Intake Across Ethnic Groups",
+  digits = 3,
+  align = "lccccc"
+)
+```
+
+- From the Tukey HSD results, we can conclude that Non-Hispanic Asian (Asian Americans) adults have a significantly higher sodium intake compared to Mexican Americans, Other Hispanics, Non-Hispanic Whites, and Non-Hispanic Blacks.
+
+- This supports what we observed earlier in the boxplots and barplots. The findings are consistent with previous studies, which reported similar trends among the U.S. adults.*
+
+**Overall, this analysis highlights that sodium intake does differ among ethnic groups, likely due to cultural dietary habits, traditional food patterns, and cooking practices. Understanding these differences can help inform more culturally tailored public health nutrition guidelines.**
+
+# Q3: Are there differences in Sugar Intake by Income?
+
+## Sugar Distributions
+
+**1)Histogram - Sugar(overall)**
+
+```{r}
+hsugar <- ggplot(food, aes(DR1ISUGR_sum)) +
+  geom_histogram(
+    breaks=seq(0, 1000, by = 50),
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Daily Sugar Intake",
+    x = "Total Sugar (grams)",
+    y = "Frequency"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),             # optional: lighten grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # title
+    axis.title = element_text(size = 14, face = "bold"),               # axis titles
+    axis.text = element_text(size = 12)                                # axis labels
+  )
+hsugar
+```
+
+- Sugar intake is also strongly right-skewed — most people consume lower amounts, but a few report very high intake.
+
+**2) Boxplot - Sugar(overall)**
+
+```{r}
+bsugar <- ggplot(food, aes(y = DR1ISUGR_sum)) +
+  geom_boxplot(
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9,
+    outlier.color = "brown3",
+    outlier.shape = 16,
+    outlier.size = 2
+  ) +
+  labs(
+    title = "Boxplot of Daily Sugar Intake",
+    x = "",
+    y = "Total Sugar (grams)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12)
+  )
+bsugar
+```
+
+- The boxplot shows many high outliers, indicating large variation in the upper range.
+
+**3)QQplot - Sugar(overall)**
+
+```{r}
+# Set up beige background and font style
+par(
+  bg = "antiquewhite",   # background color
+  col.axis = "black",    # axis color
+  col.lab = "black",     # label color
+  col.main = "black",    # title color
+  font.main = 2,         # bold title
+  cex.main = 1.5,        # title size
+  cex.lab = 1.3,         # axis title size
+  cex.axis = 1.1         # axis label size
+)
+
+# Q-Q plot for Sugar Intake
+qqnorm(
+  food$DR1ISUGR_sum,
+  main = "Q-Q Plot of Daily Sugar Intake",
+  pch = 19,               # filled points
+  col = "chocolate4",     # point color
+  cex = 0.8               # point size
+)
+qqline(
+  food$DR1ISUGR_sum,
+  col = "brown3",         # line color
+  lwd = 2                 # line thickness
+)
+```
+
+- QQ plot confirms that sugar intake is highly variable, with a small group consuming very high levels. 
+
+## Sugar by Income Distributions
+
+
+
+```{r}
+#Sugar Intake by Family Income and Percentage of Poverty
+food$INDFMPIR <- food$INDFMPIR * 100
+food <- food %>%
+  mutate(
+    poverty_cat = if_else(
+      INDFMPIR >= 300, 1L,0L),
+    poverty_cat = factor(
+      poverty_cat,
+      levels = c(0, 1),
+      labels = c("< 300% poverty", "≥ 300% poverty")
+    )
+  )
+```
+
+**Histogram of Family income and Sugar Intake**
+
+```{r}
+## Family income as % of poverty level variable and Sugar Intake
+hsug_income_scatter <- ggplot(food, aes(x = INDFMPIR, y = DR1ISUGR_sum)) +
+  geom_point(
+    color = "chocolate4",
+    fill = "chocolate",
+    alpha = 0.6,
+    shape = 21,
+    size = 3,
+    na.rm = TRUE
+  ) +
+  labs(
+    title = "Daily Sugar Intake vs. Family Income (% of Poverty)",
+    x = "Family Income as % of Poverty Level",
+    y = "Total Sugar Intake (grams)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),                    # light grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text  = element_text(size = 12)
+  )
+
+hsug_income_scatter
+```
+
+- In this plot, we illustrate the relationship between daily sugar intake and family income expressed as a percentage of the poverty line. At first glance, the relationship does not exhibit a strong overall correlation. 
+
+- However, a closer inspection reveals that lower-income individuals display a greater number of high-value outliers in sugar consumption, whereas higher-income individuals show fewer extreme values. 
+
+- Considering that the mean is sensitive to outliers, this pattern suggests that the average sugar intake may be higher among lower-income individuals.
+
+**Understanding the Family Income and Percentage of Poverty**
+
+The Family Income and Percentage of Poverty is calculated by dividing the family's total income by the applicable poverty guideline income level for their household size.
+
+**2023 Poverty Guidelines: 48 Contiguous States (all states except Alaska and Hawaii)**
+
+| Household / Family Size | 100%      | 300%      | 500%      |
+|--------------------------|-----------|-----------|-----------|
+| 1                        | $14,580   | $43,740   | $72,900   |
+| 2                        | $19,720   | $59,160   | $98,600   |
+| 3                        | $24,860   | $74,580   | $124,300  |
+| 4                        | $30,000   | $90,000   | $150,000  |
+| 5                        | $35,140   | $105,420  | $175,700  |
+| 6                        | $40,280   | $120,840  | $201,400  |
+| 7                        | $45,420   | $136,260  | $227,100  |
+
+**Source**: United States Department of Health and Human Services
+
+The average household income in the United States cannot be represented by a single figure; however, the real median household income was approximately $83,730 in 2024, with an average household size of about 3.15 persons (typically 3–4 individuals) according to the U.S. Census Bureau.
+
+In our sample, the average family income as a percentage of the poverty line is 301%, which aligns closely with national figures. Based on this measure, we classified participants into two income groups:
+
+- Low-income: households earning below 300% of the poverty line
+
+- High-income: households earning at or above 300% of the poverty line
+ 
+Individuals with missing income information were excluded from the analysis (551 individuals, representing 11% of the total sample). After this exclusion, the final analytic sample consisted of 4,209 individuals, evenly distributed between low-income (50%) and high-income (50%) groups.
+
+```{r}
+tbl <- food %>%
+  select(poverty_cat) %>%
+  tbl_summary(type = list(poverty_cat ~ "categorical"),
+    missing = "ifany"   # <--- shows N (and %) of missing values
+  ) %>%
+  bold_labels()
+tbl_df <- as_tibble(tbl, col_labels = TRUE)
+tbl
+
+#Drop NAs
+food_noNA <- food %>% filter(!is.na(poverty_cat))
+```
+
+**Distribution of Daily Sugar Intake Low-Income individuals vs High-Income individuals**
+
+**Histograms Sugar by Poverty Category**
+```{r}
+hsug_income <- ggplot(food_noNA, aes(x = DR1ISUGR_sum, fill = poverty_cat)) +
+  geom_histogram(
+    color = "black",
+    alpha = 0.5,
+    position = "identity"   # overlay instead of stacking
+  ) +
+  scale_fill_manual(
+    name = "Family income as % of poverty level variable",
+    values = c("< 300% poverty" = "chocolate4", "≥ 300% poverty" = "palegreen3")
+  ) +
+  labs(
+    title = "Distribution of Daily Sugar Intake by Income Category",
+    x = "Total Sugar (grams)",
+    y = "Frequency"
+  ) +
+  theme(
+    plot.background  = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text  = element_text(size = 12),
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text  = element_text(size = 12)
+  )
+hsug_income
+```
+
+- In the histogram of daily sugar intake by income group, both groups show a higher concentration of individuals consuming less than 250 grams of sugar per day. 
+
+- However, high-income individuals tend to cluster more strongly around lower intake levels, while low-income individuals display a longer tail extending toward higher levels of sugar consumption.
+
+
+**Boxplot by Income**
+```{r}
+bsug_income <- ggplot(food_noNA, aes(x = poverty_cat, y = DR1ISUGR_sum, fill = poverty_cat)) +
+  geom_boxplot(
+    color = "black",
+    alpha = 0.7,
+    outlier.color = "brown3",
+    outlier.shape = 16,
+    outlier.size = 2
+  ) +
+  scale_fill_manual(
+    values = c("< 300% poverty" = "chocolate4", "≥ 300% poverty" = "palegreen3")
+  ) +
+  labs(
+    title = "Boxplot of Daily Sugar Intake by Income Category",
+    x = "Income Category",
+    y = "Total Sugar (grams)",
+    ) +
+  theme(
+    plot.background  = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text  = element_text(size = 12)
+  )
+bsug_income
+```
+
+
+- The box plot provides a clearer comparison between groups. Within the interquartile range (25th to 75th percentiles), sugar intake values are relatively similar across income categories. 
+
+- Nonetheless, low-income individuals exhibit a greater number of high-value outliers, particularly those exceeding 250 grams of sugar per day, indicating that excessive sugar consumption is more prevalent within this group.
+
+**Comparison of means of of Daily Sugar Intake Low-Income individuals vs High-Income individuals**
+
+```{r}
+sugincmean95 <- t.test(food_noNA$DR1ISUGR_sum, conf.level = 0.95)
+
+foodpoor <- food_noNA[food_noNA$poverty_cat == "< 300% poverty", ]
+foodrich <- food_noNA[food_noNA$poverty_cat == "≥ 300% poverty", ]
+
+sugmean95_poor <- t.test(foodpoor$DR1ISUGR_sum, conf.level = 0.95)
+
+sugmean95_rich <- t.test(foodrich$DR1ISUGR_sum, conf.level = 0.95)
+
+prot_summary <- data.frame(
+  Group = c("Total", "< 300% poverty", "≥ 300% poverty"),  
+  Mean = c(
+    sugincmean95$estimate,
+    sugmean95_poor$estimate,
+    sugmean95_rich$estimate
+  ),
+  Lower = c(
+    sugincmean95$conf.int[1],
+    sugmean95_poor$conf.int[1],
+    sugmean95_rich$conf.int[1]
+  ),
+  Upper = c(
+    sugincmean95$conf.int[2],
+    sugmean95_poor$conf.int[2],
+    sugmean95_rich$conf.int[2]
+  )
+)
+
+group_colors <- c("Total" = "brown3", "< 300% poverty" = "chocolate4", "≥ 300% poverty" = "palegreen3")
+
+sug_mean_ci <- ggplot(prot_summary, aes(x = Group, y = Mean, color = Group)) +
+  geom_point(size = 4, show.legend = FALSE) +
+  geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2, linewidth = 1, show.legend = FALSE) +
+  scale_color_manual(values = group_colors) +
+  labs(
+    title = "Mean Daily Sugar Intake with 95% Confidence Intervals",
+    x = "",
+    y = "Sugar (grams)"
+  ) +
+  theme(
+    plot.background  = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text  = element_text(size = 12),
+    legend.position = "none"
+  )
+
+sug_mean_ci
+```
+
+
+- The figure clearly shows how the mean of sugar intake for low-income indivuduals is larger than for high-income individuals.
+
+- On average, low-income individuals consume daily `r format(sugmean95_poor$estimate, digits=2)`, with a 95% confidence interval of `r format(sugmean95_poor$conf.int, digits=2)` while high-income individuals on average consume `r format(sugmean95_rich$estimate, digits=2)`, with a 95% confidence interval of `r format(sugmean95_rich$conf.int, digits=2)`.
+
+## Hypothesis Testing
+
+### T-TEST
+
+**Null hypothesis (H₀): mean sugar (low-income) ≤ mean sugar (high-income)**
+
+**Alternative hypothesis (H₁): mean sugar (low-income) > mean sugar (high-income)**
+
+```{r}
+tres <- t.test(DR1ISUGR_sum ~ poverty_cat,
+               data = food_noNA,
+               alternative = "greater")
+
+tres_tidy <- tidy(tres) %>%
+  mutate(across(where(is.numeric), \(x) round(x, 2))) %>%
+  rename(
+    "Mean (≥300% poverty)" = estimate1,
+    "Mean (<300% poverty)" = estimate2,
+    "Mean difference (high - low)" = estimate,
+    "t statistic" = statistic,
+    "p value (one-sided)" = p.value,
+    "CI lower" = conf.low,
+    "CI upper" = conf.high
+  ) %>%
+  select(`Mean (≥300% poverty)`, `Mean (<300% poverty)`,
+         `Mean difference (high - low)`, `CI lower`, `CI upper`,
+         `t statistic`, `p value (one-sided)`)
+kable(
+  tres_tidy,
+  caption = "One-sided t-test: Mean daily sugar intake by income category",
+  digits = 2,
+  align = "c"
+)
+
+```
+
+- With an α=0.05 we reject the null hypothesis that the mean of sugar consumed is the same for low-- and high-income individuals. 
+
+- Low-income individuals consume significantly more sugar on average than high-income individuals.
+
+# Conclusion
+
+This analysis used nationally representative NHANES dietary data (2021–2023) to explore whether common nutrition patterns in the U.S. still hold true after the COVID-19 pandemic. We focused on three key questions related to protein, sodium, and sugar intake across gender, ethnicity, and income levels.
+
+Our results show clear differences across these groups:
+
+- Men consume more protein on average than women, confirming long-standing dietary trends.
+
+- Asian Americans have higher average sodium intake compared to most other ethnic groups, likely reflecting cultural and cooking differences.
+
+- Low-income individuals consume more sugar than higher-income individuals, possibly due to limited access to affordable, healthy foods.
+
+In summary, these findings suggest that dietary habits in the U.S. continue to differ by gender, ethnicity, and income, even in the post-pandemic period. Addressing these nutritional gaps will require strategies that consider both cultural preferences and economic barriers to healthy eating.
+
+
+
+
