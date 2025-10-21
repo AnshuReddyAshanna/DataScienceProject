@@ -8,6 +8,7 @@ output:
     toc_depth: 2
     theme: flatly
     df_print: paged
+    code_folding: hide
 ---
 **Setup (packages, paths, global options)**
 ```{r}
