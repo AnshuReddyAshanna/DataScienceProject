@@ -8,6 +8,7 @@ output:
      number_sections: true
      toc_depth: 3
      toc_float: yes
+     code_folding: hide
 ---
 
 ```{r init, include=F}
