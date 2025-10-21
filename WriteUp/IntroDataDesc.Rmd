@@ -1,0 +1,81 @@
+---
+title: "Do Common Nutrition Beliefs Still Hold?"
+author: "Team-1"
+date: "2025-10-21"
+output:
+   rmdformats::readthedown:
+     code_folding: hide
+     number_sections: true
+     toc_depth: 3
+     toc_float: yes
+---
+
+```{r init, include=F}
+library(arrow)
+library(ggplot2)
+library(ezids)
+library(labelled)
+library(gtsummary)
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(knitr)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup")
+options(scientific=T, digits = 3) 
+
+# Set the root directory for all code chunks (important for reading files)
+knitr::opts_knit$set(root.dir = "..")
+
+```
+
+# Introduction
+
+The COVID-19 pandemic and subsequent geopolitical conflicts have profoundly affected populations worldwide, influencing multiple aspects of daily life—including dietary habits. Research indicates that these crises led to notable changes in food consumption patterns. For example, Pandey et al. (2023) found that in India, individuals shifted toward diets with more fruits, vegetables, and home-cooked meals. Similarly, the Brown University Health Department (2023) reported that Americans spent more time cooking at home during the pandemic, which generally promoted healthier eating habits.
+
+However, these global shocks also exacerbated inequalities in access to nutritious food. The price of healthy food increased more sharply than that of ultra-processed and high-sugar foods (Lewis et al., 2023). Supply chain disruptions—particularly those linked to the reduction of cereal exports from Ukraine following the Russian invasion—further limited access to affordable, nutrient-rich foods. As a result, many individuals have turned to more accessible but less nutritious food options.
+
+Building on these dynamics, this study aims to revisit and test several longstanding hypotheses about dietary patterns, assessing whether the COVID-19 pandemic and recent global economic shocks have altered previous trends.
+
+This study explores three central research questions. The first examines whether women, on average, consume less protein than men in the United States. According to the U.S. survey “What We Eat in America?” (2015–2016), adult males consumed approximately one-third more protein than adult females. To the best of our knowledge, there is no post-pandemic research confirming whether this gender gap in protein intake persists. International evidence suggests similar trends. In Italy, men tend to consume more meat and processed meats, while women favor plant-based protein sources, resulting in lower overall protein intake among women (Lombardo, 2025). Likewise, in China, men consume more protein in absolute grams than women (Zhao, Sun, & Su, 2020).
+
+The second question investigates whether sodium intake differs across ethnic groups in the U.S. Cheng et al. (2025), in their study “Racial and Ethnic Differences in Sodium Sources and Sodium Reduction Behaviors Among U.S. Adults: NHANES 2017–2020 (Pre-Pandemic)”, found significant variation in sodium intake among racial and ethnic groups. These differences are largely explained by variations in food preferences, cooking habits, and cultural cuisines. For instance, Asian American adults are more likely to use salt during cooking but less likely to add salt at the table, influencing total sodium exposure.
+
+Finally, the third question examines whether sugar intake varies by income level. In 2024, 14.5 million people in the U.S. (4.3%) were unable to afford a healthy diet (World Bank Food Prices for Nutrition DataHub, 2024). Lewis et al. (2023) found that the price of healthy foods increased more rapidly than that of unhealthy alternatives during the pandemic. Consistent with this, the Cleveland Clinic National Survey (2023) reported that 46% of Americans view the high cost of healthy food as the primary obstacle to maintaining a healthier diet. Similarly, research from the University of Warwick (2022) indicates that Americans have increasingly substituted expensive, nutrient-rich foods with cheaper, sugary, and ultra-processed options.
+
+Using a sample of U.S. adults aged 20 and older collected between 2021 and 2023, we find that men consume more protein on average than women, Asian Americans have higher sodium intake compared to several other ethnic groups, and low-income individuals (below 300% of the poverty line) consume more sugar on average than high-income individuals (above 300%)
+
+# Data
+## What We Eat in America Dietary Data? National Health and Nutrition Examination Survey (NHANES)
+August 2021-August 2023
+
+The “What We Eat in America” (WWEIA) dietary data, collected between August 2021 and August 2023, form part of the National Health and Nutrition Examination Survey (NHANES) conducted by the U.S. Centers for Disease Control and Prevention (CDC) in collaboration with the U.S. Department of Agriculture (USDA). This dataset provides nationally representative information on the types and quantities of foods and beverages consumed by individuals in the United States.
+
+Data were collected through telephone-administered 24-hour dietary recalls using the USDA’s 5-Step Automated Multiple-Pass Method (AMPM), a structured interview protocol designed to enhance accuracy and reduce underreporting. Each participant completed up to two dietary recalls, in which they reported all foods, beverages (including water), and supplements consumed from midnight to midnight on the previous day.
+
+Nutrient values were derived from the USDA Food and Nutrient Database for Dietary Studies (FNDDS), which provides standardized nutrient composition data for thousands of food items. The 2021–2023 WWEIA cycle was based on an updated survey design and modified questionnaires introduced after the COVID-19 pandemic to reflect changes in food consumption patterns and supply chains.
+
+The following dietary variables were included in the analysis:
+Individual ID, USDA 8-digit food code, Energy (kcal), Protein (g), Carbohydrates (g), Total Sugars (g), Dietary Fiber (g), Total Fat (g), and Sodium (mg).
+
+To generate individual-level daily consumption data, all foods reported under the USDA 8-digit codes were aggregated by summing nutrient quantities per individual. This approach provides the total daily nutrient intake per participant, allowing for direct comparisons across individuals and demographic groups. Aggregation by total intake—rather than mean or per-meal intake—was chosen to capture complete daily nutritional exposure, consistent with standard NHANES analytical practices. Future analyses could disaggregate these data by food category (e.g., cereals or processed foods) to examine the consumption of items most affected by recent price increases.
+
+Demographic information was obtained from NHANES demographic files and included:
+Individual ID, Gender, Age, Race/Hispanic origin (including Non-Hispanic Asian), Education level (adults 20+), Marital status, Household size, and Family income-to-poverty ratio.
+
+Following USDA recommendations, the analytic sample was restricted to adults aged 20 years and older to minimize bias from unequal age distributions across ethnic groups, as children’s food intake is inherently lower. Pregnant women were excluded because of their distinct nutritional requirements and dietary behaviors.
+
+To ensure national representativeness, NHANES provides dietary day one sample weights (WTDRD1), accounting for survey design, oversampling, and nonresponse. However, the results reported in this report do not included this weights in the process. Nonetheless, we identified that the distribution of demographic groups matches what Concensus Economics reports for the U.S. (See Exploratory Data Analysis for more details).
+
+After merging the dietary and demographic components, the final analytic sample consisted of 4,760 individuals and 36 variables, representing U.S. adults between August 2021 and August 2023.
+
+While the WWEIA-NHANES data provide a robust and nationally representative source for dietary assessment, several limitations should be acknowledged. First, the 24-hour dietary recall method relies on self-reported information, which is subject to recall bias and underreporting or overreporting, particularly for foods perceived as unhealthy. Second, each participant’s recall represents only one or two days of intake, which may not fully capture habitual dietary patterns or seasonal variations. Third, the use of aggregated nutrient totals does not account for meal timing or contextual factors, such as eating location or preparation method. Finally, while NHANES weighting adjusts for survey design and nonresponse, subgroup analyses—such as by ethnicity or income—may still be affected by smaller sample sizes and sampling variability.
+
+Despite these limitations, WWEIA-NHANES remains one of the most comprehensive and reliable datasets for examining dietary intake and its relationship to demographic and socioeconomic characteristics in the U.S. population.
