@@ -212,32 +212,30 @@ p_ci <- ggplot(prot_gender_summary, aes(x = gender, y = mean, color = gender)) +
 p_ci
 ```
 ###FIX Tomorrow#####
-```{r hist-protein-gender, fig.width=7, fig.height=5}
-# Overlapping histograms of protein intake by gender
-hprot_gender <- ggplot(food, aes(x = DR1IPROT_sum, fill = RIAGENDR)) +
-  geom_histogram(
-    breaks = seq(0, 500, by = 10),
-    color = "black",
-    alpha = 0.6,
-    position = "identity"
-  ) +
-  # Set blue for males and red for females
-  scale_fill_manual(values = c("Male" = "steelblue3", "Female" = "indianred2")) +
-  labs(
-    title = "Distribution of Daily Protein Intake by Gender",
-    x = "Protein Intake (grams)",
-    y = "Frequency",
-    fill = "Gender"
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(
-    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
-    legend.position = "top"
-  )
 
-# Display the plot
-hprot_gender
+```{r protein-hist-gender, echo=TRUE, fig.width=8, fig.height=5}
+# 1) Make a clean gender factor (1 = Male, 2 = Female)
+food <- food |>
+  dplyr::mutate(gender = factor(RIAGENDR, levels = c(1, 2),
+                                labels = c("Male", "Female")))
+
+# 2) Overlapping histogram (red/blue)
+library(ggplot2)
+ggplot(dplyr::filter(food, !is.na(gender)),
+       aes(x = DR1IPROT_sum, fill = gender)) +
+  geom_histogram(breaks = seq(0, 500, by = 10),
+                 position = "identity",   # overlap instead of stack
+                 alpha = 0.55,            # see-through bars
+                 color = "black") +
+  scale_fill_manual(values = c(Male = "#1f77b4", Female = "#e74c3c"),
+                    name = "Gender") +
+  labs(title = "Distribution of Daily Protein Intake by Gender",
+       x = "Protein Intake (grams)", y = "Frequency") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
 ```
+
+
 
 **EDA Summary Protein by Gender***
 Summarizing the findings in four graphs using patchwork
