@@ -1,0 +1,303 @@
+---
+title: "Q3: Are there differences in Sugar Intake by Income?"
+author: "Team-1"
+date: "2025-10-21"
+output:
+   rmdformats::readthedown:
+     code_folding: hide
+     number_sections: true
+     toc_depth: 3
+     toc_float: yes
+---
+
+```{r init, include=F}
+library(arrow)
+library(ggplot2)
+library(ezids)
+library(labelled)
+library(gtsummary)
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(knitr)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup")
+options(scientific=T, digits = 3) 
+
+# Set the root directory for all code chunks (important for reading files)
+knitr::opts_knit$set(root.dir = "..")
+
+```
+
+```{r, include=FALSE}
+food <- read_parquet("proc_data/demo_foods.parquet")
+food$INDFMPIR <- food$INDFMPIR * 100
+##### CREATE INCOME CATEGORICAL
+food <- food %>%
+  mutate(
+    poverty_cat = if_else(
+      INDFMPIR >= 300, 1L,0L),
+    poverty_cat = factor(
+      poverty_cat,
+      levels = c(0, 1),
+      labels = c("< 300% poverty", "≥ 300% poverty")
+    )
+  )
+```
+
+# Socioeconomic Disparities in Sugar Consumption and Access to Healthy Diets in the U.S.
+
+According to World Bank statistics, in 2024 approximately 14.5 million people in the United States (4.3%) could not afford a healthy diet (World Bank Food Prices for Nutrition DataHub, 2024). This issue has intensified in recent years, as the COVID-19 pandemic, the Russian invasion of Ukraine, and other geopolitical crises have driven up the prices of key commodities such as wheat, soy, and other essential food items. The resulting persistent inflation in food prices has heightened global concerns about food security.
+
+Evidence suggests that healthy foods have become disproportionately more expensive than unhealthy options. Lewis et al. (2023) report that during the COVID-19 pandemic and concurrent food system disruptions, the prices of healthy foods rose faster than those of less nutritious alternatives. This aligns with findings from the Cleveland Clinic National Survey (2023), where 46% of Americans identified the high cost of healthy food as the main barrier to adopting a healthier diet.
+
+Rising food costs also appear to have shifted consumption patterns. Research from the University of Warwick (2022) indicates that Americans are increasingly substituting expensive, nutrient-rich foods—such as fruits and vegetables—with cheaper, sugar-dense, and ultra-processed alternatives, which tend to be more affordable and have longer shelf lives.
+
+Building on this evidence, our analysis examines whether lower-income individuals consume more sugar on average than higher-income individuals in the post-pandemic period (2021–2023), characterized by persistently high food prices. Specifically, we analyze daily sugar intake (in grams) among U.S. adults aged 20 and older, comparing these data across family income levels expressed as a percentage of the federal poverty line.
+
+# Exploratory Data Analysis
+
+## First look at the relation between Daily Sugar Intake (in grams) and the Family Income and Percentage of Poverty
+
+```{r}
+##### Family income as % of poverty level variable and Sugar Intake
+hsug_income_scatter <- ggplot(food, aes(x = INDFMPIR, y = DR1ISUGR_sum)) +
+  geom_point(
+    color = "chocolate4",
+    fill = "chocolate",
+    alpha = 0.6,
+    shape = 21,
+    size = 3,
+    na.rm = TRUE
+  ) +
+  labs(
+    title = "Daily Sugar Intake vs. Family Income (% of Poverty)",
+    x = "Family Income as % of Poverty Level",
+    y = "Total Sugar Intake (grams)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),                    # light grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text  = element_text(size = 12)
+  )
+
+hsug_income_scatter
+```
+
+In this plot, we illustrate the relationship between daily sugar intake and family income expressed as a percentage of the poverty line. At first glance, the relationship does not exhibit a strong overall correlation. However, a closer inspection reveals that lower-income individuals display a greater number of high-value outliers in sugar consumption, whereas higher-income individuals show fewer extreme values. Considering that the mean is sensitive to outliers, this pattern suggests that the average sugar intake may be higher among lower-income individuals.
+
+## Understanding the Family Income and Percentage of Poverty
+The Family Income and Percentage of Poverty is calculated by dividing the family's total income by the applicable poverty guideline income level for their household size.
+
+### 2023 Poverty Guidelines: 48 Contiguous States (all states except Alaska and Hawaii)
+
+| Household / Family Size | 100%      | 300%      | 500%      |
+|--------------------------|-----------|-----------|-----------|
+| 1                        | $14,580   | $43,740   | $72,900   |
+| 2                        | $19,720   | $59,160   | $98,600   |
+| 3                        | $24,860   | $74,580   | $124,300  |
+| 4                        | $30,000   | $90,000   | $150,000  |
+| 5                        | $35,140   | $105,420  | $175,700  |
+| 6                        | $40,280   | $120,840  | $201,400  |
+| 7                        | $45,420   | $136,260  | $227,100  |
+
+**Source**: United States Department of Health and Human Services
+
+The average household income in the United States cannot be represented by a single figure; however, the real median household income was approximately $83,730 in 2024, with an average household size of about 3.15 persons (typically 3–4 individuals) according to the U.S. Census Bureau.
+
+In our sample, the average family income as a percentage of the poverty line is 301%, which aligns closely with national figures. Based on this measure, we classified participants into two income groups:
+
+- Low-income: households earning below 300% of the poverty line
+
+- High-income: households earning at or above 300% of the poverty line
+ 
+Individuals with missing income information were excluded from the analysis (551 individuals, representing 11% of the total sample). After this exclusion, the final analytic sample consisted of 4,209 individuals, evenly distributed between low-income (50%) and high-income (50%) groups.
+
+```{r}
+tbl <- food %>%
+  select(poverty_cat) %>%
+  tbl_summary(type = list(poverty_cat ~ "categorical"),
+    missing = "ifany"   # <--- shows N (and %) of missing values
+  ) %>%
+  bold_labels()
+tbl_df <- as_tibble(tbl, col_labels = TRUE)
+tbl
+
+#Drop NAs
+food_noNA <- food %>% filter(!is.na(poverty_cat))
+```
+
+## Distribution of Daily Sugar Intake Low-Income individuals vs High-Income individuals
+
+```{r}
+## Histograms Sugar by Poverty Category
+hsug_income <- ggplot(food_noNA, aes(x = DR1ISUGR_sum, fill = poverty_cat)) +
+  geom_histogram(
+    color = "black",
+    alpha = 0.5,
+    position = "identity"   # overlay instead of stacking
+  ) +
+  scale_fill_manual(
+    name = "Family income as % of poverty level variable",
+    values = c("< 300% poverty" = "chocolate4", "≥ 300% poverty" = "palegreen3")
+  ) +
+  labs(
+    title = "Distribution of Daily Sugar Intake by Income Category",
+    x = "Total Sugar (grams)",
+    y = "Frequency"
+  ) +
+  theme(
+    plot.background  = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text  = element_text(size = 12),
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text  = element_text(size = 12)
+  )
+
+##### Boxplot by Income
+bsug_income <- ggplot(food_noNA, aes(x = poverty_cat, y = DR1ISUGR_sum, fill = poverty_cat)) +
+  geom_boxplot(
+    color = "black",
+    alpha = 0.7,
+    outlier.color = "brown3",
+    outlier.shape = 16,
+    outlier.size = 2
+  ) +
+  scale_fill_manual(
+    values = c("< 300% poverty" = "chocolate4", "≥ 300% poverty" = "palegreen3")
+  ) +
+  labs(
+    title = "Boxplot of Daily Sugar Intake by Income Category",
+    x = "Income Category",
+    y = "Total Sugar (grams)",
+    ) +
+  theme(
+    plot.background  = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    legend.title = element_text(size = 13, face = "bold"),
+    legend.text  = element_text(size = 12)
+  )
+
+hsug_income
+bsug_income
+```
+
+In the histogram of daily sugar intake by income group, both groups show a higher concentration of individuals consuming less than 250 grams of sugar per day. However, high-income individuals tend to cluster more strongly around lower intake levels, while low-income individuals display a longer tail extending toward higher levels of sugar consumption.
+
+The box plot provides a clearer comparison between groups. Within the interquartile range (25th to 75th percentiles), sugar intake values are relatively similar across income categories. Nonetheless, low-income individuals exhibit a greater number of high-value outliers, particularly those exceeding 250 grams of sugar per day, indicating that excessive sugar consumption is more prevalent within this group.
+
+# Comparison of means of of Daily Sugar Intake Low-Income individuals vs High-Income individuals
+```{r}
+sugincmean95 <- t.test(food_noNA$DR1ISUGR_sum, conf.level = 0.95)
+
+foodpoor <- food_noNA[food_noNA$poverty_cat == "< 300% poverty", ]
+foodrich <- food_noNA[food_noNA$poverty_cat == "≥ 300% poverty", ]
+
+sugmean95_poor <- t.test(foodpoor$DR1ISUGR_sum, conf.level = 0.95)
+
+sugmean95_rich <- t.test(foodrich$DR1ISUGR_sum, conf.level = 0.95)
+
+prot_summary <- data.frame(
+  Group = c("Total", "< 300% poverty", "≥ 300% poverty"),  
+  Mean = c(
+    sugincmean95$estimate,
+    sugmean95_poor$estimate,
+    sugmean95_rich$estimate
+  ),
+  Lower = c(
+    sugincmean95$conf.int[1],
+    sugmean95_poor$conf.int[1],
+    sugmean95_rich$conf.int[1]
+  ),
+  Upper = c(
+    sugincmean95$conf.int[2],
+    sugmean95_poor$conf.int[2],
+    sugmean95_rich$conf.int[2]
+  )
+)
+
+group_colors <- c("Total" = "brown3", "< 300% poverty" = "chocolate4", "≥ 300% poverty" = "palegreen3")
+
+sug_mean_ci <- ggplot(prot_summary, aes(x = Group, y = Mean, color = Group)) +
+  geom_point(size = 4, show.legend = FALSE) +
+  geom_errorbar(aes(ymin = Lower, ymax = Upper), width = 0.2, linewidth = 1, show.legend = FALSE) +
+  scale_color_manual(values = group_colors) +
+  labs(
+    title = "Mean Daily Sugar Intake with 95% Confidence Intervals",
+    x = "",
+    y = "Sugar (grams)"
+  ) +
+  theme(
+    plot.background  = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text  = element_text(size = 12),
+    legend.position = "none"
+  )
+
+sug_mean_ci
+```
+
+The figure clearly shows how the mean of sugar intake for low-income indivuduals is larger than for high-income individuals.
+On average, low-income individuals consume daily `r format(sugmean95_poor$estimate, digits=2)`, with a 95% confidence interval of `r format(sugmean95_poor$conf.int, digits=2)` while high-income individuals on average consume `r format(sugmean95_rich$estimate, digits=2)`, with a 95% confidence interval of `r format(sugmean95_rich$conf.int, digits=2)`.
+
+## T-TEST
+
+- Null hypothesis (H₀): mean sugar (low-income) ≤ mean sugar (high-income)
+- Alternative hypothesis (H₁): mean sugar (low-income) > mean sugar (high-income)
+```{r}
+tres <- t.test(DR1ISUGR_sum ~ poverty_cat,
+               data = food_noNA,
+               alternative = "greater")
+
+tres_tidy <- tidy(tres) %>%
+  mutate(across(where(is.numeric), \(x) round(x, 2))) %>%
+  rename(
+    "Mean (≥300% poverty)" = estimate1,
+    "Mean (<300% poverty)" = estimate2,
+    "Mean difference (high - low)" = estimate,
+    "t statistic" = statistic,
+    "p value (one-sided)" = p.value,
+    "CI lower" = conf.low,
+    "CI upper" = conf.high
+  ) %>%
+  select(`Mean (≥300% poverty)`, `Mean (<300% poverty)`,
+         `Mean difference (high - low)`, `CI lower`, `CI upper`,
+         `t statistic`, `p value (one-sided)`)
+kable(
+  tres_tidy,
+  caption = "One-sided t-test: Mean daily sugar intake by income category",
+  digits = 2,
+  align = "c"
+)
+```
+
+With an α=0.05 we reject the null hypothesis that the mean of sugar consumed is the same for low-- and high-income individuals. Low-income individuals consume significantly more sugar on average than high-income individuals.
