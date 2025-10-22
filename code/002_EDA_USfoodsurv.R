@@ -5,6 +5,7 @@ rm(list = ls())
 library(arrow)
 library(ggplot2)
 library(ezids)
+library(dplyr)
 library(labelled)
 library(gtsummary)
 
@@ -36,6 +37,7 @@ food2 %>%
     missing = "ifany"   # <--- shows N (and %) of missing values
   ) %>%
   bold_labels()
+
 #EDA - Visualizations
 
 #Histogram for the distribution of calorie intake
@@ -79,8 +81,8 @@ food <- food %>%
       DMDEDUC2 == 1 ~ "Less than 9th grade",
       DMDEDUC2 == 2 ~ "9-11th grade",
       DMDEDUC2 == 3 ~ "High school",
-      DMDEDUC2 == 4 ~ "Undergrduate",
-      DMDEDUC2 == 5 ~ "Graduate or above",
+      DMDEDUC2 == 4 ~ "Some College or AA Degree",
+      DMDEDUC2 == 5 ~ "College Graduate or above",
       TRUE ~ NA_character_))
 
 #Box plot for Protein intake by gender group
@@ -109,7 +111,7 @@ ggplot(food, aes(x = INDFMPIR, y = DR1IKCAL_sum)) +
 ggplot(food, aes(x = DR1ISODI_sum, y = DR1IPROT_sum, color = AGE_GROUP)) +
   geom_point(alpha = 0.7) +
   labs(title = "Sodium vs Protein Intake Across Age",
-       x = "Total Sodium (g)",
+       x = "Total Sodium (mg)",
        y = "Total Protein (g)")
 
 #Pie chart of all the nutrients-Protein,Carbohydrate,Fat,Sodium,Sugar,Fiber

@@ -220,7 +220,7 @@ hsodium <- ggplot(food, aes(DR1ISODI_sum)) +
   ) +
   labs(
     title = "Distribution of Daily Sodium Intake",
-    x = "Total Sodium (grams)",
+    x = "Total Sodium (mg)",
     y = "Frequency"
   ) +
   theme(
@@ -235,6 +235,10 @@ hsodium <- ggplot(food, aes(DR1ISODI_sum)) +
     axis.title = element_text(size = 14, face = "bold"),               # axis titles
     axis.text = element_text(size = 12)                                # axis labels
   )
+
+#Display the plot
+hsodium
+
 ggsave("output/EDA_hist_sodium.png", plot = hsodium, width = 8, height = 6, dpi = 300)
 
 # Boxplot for the distribution of Sodium Intake
@@ -250,7 +254,7 @@ bsodium <- ggplot(food, aes(y = DR1ISODI_sum)) +
   labs(
     title = "Boxplot of Daily Sodium Intake",
     x = "",
-    y = "Total Sodium (grams)"
+    y = "Total Sodium (mg)"
   ) +
   theme(
     # Background colors
@@ -264,6 +268,9 @@ bsodium <- ggplot(food, aes(y = DR1ISODI_sum)) +
     axis.title = element_text(size = 14, face = "bold"),
     axis.text = element_text(size = 12)
   )
+
+#Display the plot
+bsodium
 
 # Save the boxplot
 ggsave("output/EDA_box_sodium.png", plot = bsodium, width = 8, height = 6, dpi = 300)

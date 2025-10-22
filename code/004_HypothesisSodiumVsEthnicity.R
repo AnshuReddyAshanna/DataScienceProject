@@ -53,7 +53,7 @@ box_sodium_ethnic <- ggplot(food, aes(x = RIDRETH3, y = DR1ISODI_sum, fill = RID
   labs(
     title = "Boxplot of Sodium Intake by different Ethnic Groups",
     x = "Ethnic Groups",
-    y = "Sodium Intake (grams)"
+    y = "Sodium Intake (mg)"
     ) +
   theme(
     # Background colors
@@ -65,7 +65,7 @@ box_sodium_ethnic <- ggplot(food, aes(x = RIDRETH3, y = DR1ISODI_sum, fill = RID
     #Font sizes
     plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 16, face = "bold"),
-    axis.text  = element_text(size = 15),
+    axis.text  = element_text(size = 7),
     legend.position = "none"
   )
 # Display the plot
@@ -85,8 +85,8 @@ bar_sodium_ethnic <- ggplot(sodium_summary, aes(x = RIDRETH3, y = mean_sodium, f
     ) +
   labs(
     title = "Barplot of Average Sodium Intake by different Ethnic Groups",
-    x = "Ethnic Group",
-    y = "Mean Sodium Intake (grams)"
+    x = "Ethnic Groups",
+    y = "Mean Sodium Intake (mg)"
   ) +
   theme(
     # Background colors
@@ -98,7 +98,7 @@ bar_sodium_ethnic <- ggplot(sodium_summary, aes(x = RIDRETH3, y = mean_sodium, f
     # Font sizes
     plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 16, face = "bold"),
-    axis.text  = element_text(size = 15),
+    axis.text  = element_text(size = 6),
     legend.position = "none"
   )
 
