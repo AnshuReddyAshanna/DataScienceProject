@@ -462,6 +462,41 @@ fit02 <- glm(log_sugar ~ gender + education + race+ timeus + numhomemeals + nums
 summary(fit02)
 r.squaredGLMM(fit02)
 
+## Coefplot
+coef_df <- tidy(fit02, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(
+    # significance stars
+    sig = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01  ~ "**",
+      p.value < 0.05  ~ "*",
+      TRUE ~ ""
+    ),
+    coef_label = sprintf("%.3f%s", estimate, sig),
+    term = gsub("_", " ", term),
+    term = factor(term, levels = rev(unique(term)))
+  )
+
+ggplot(coef_df, aes(x = term, y = estimate)) +
+  geom_point(size = 3, color = "#4DBBD5", alpha=0.5) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = 0.2, color = "#4DBBD5", alpha=0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5, color="#E64B35") +
+  geom_text(aes(label = coef_label), vjust=-0.5,
+            hjust = 0, size = 3.5) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.title.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
 ###### Multicollinearity
 vif(fit02)
 #Pretty good :D
@@ -469,8 +504,19 @@ vif(fit02)
 # Saving the predictions:
 dfwithpred <- add_predictions(df,fit02)
 #Plot predictions vs real value
-ggplot(dfwithpred,aes(log_sugar,pred))+
-  geom_point(aes(log_sugar,pred))+geom_line(aes(pred), colour="red", size=1)
+ggplot(dfwithpred, aes(x = log_sugar, y = pred)) +
+  geom_point(alpha = 0.5, color = "#4DBBD5", size = 2) +
+  geom_line(aes(pred), colour = "#E64B35", size = 1.2) +
+  labs(
+    x = "Observed log(Sugar Intake)",
+    y = "Predicted log(Sugar Intake)",
+    title = "Observed vs. Predicted Sugar Intake"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.title = element_text(face = "bold")
+  )
 
 ## Exploring Model
 par(mfrow = c(1,1))
