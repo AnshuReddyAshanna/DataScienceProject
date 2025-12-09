@@ -30,6 +30,7 @@ library(survey)
 library(wCorr)
 library(treemapify)
 library(Hmisc)
+library(leaps)
 
 
 #Set Working Directory as the DataScienceProject folder
@@ -83,9 +84,7 @@ best_vars  <- names(best_coefs)[-1]  # drop "(Intercept)"
 best_vars
 best_coefs
 
-## THIS IS NOT GOOD WITH CATEGORICAL VARIABLES!!!
-
-
+##### MANUAL IDENTIFICATION
 #Benchmark
 fit1 <- glm(log_sugar ~ numsnacks + numhomemeals, data = df)
 summary(fit1)
