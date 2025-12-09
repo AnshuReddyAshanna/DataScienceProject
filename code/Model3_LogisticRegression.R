@@ -27,27 +27,44 @@ head(food)
 names(food)
 
 ##############################################
-# 1. Create healthy diet score + dummy
-#    Using 5-out-of-7 nutritional criteria
+# 1. Create healthy diet score by using 5-out-of-7 nutritional criteria
 ##############################################
 
 # Note:
 # - For protein and fiber, "healthy" means AT LEAST the benchmark (>= 50g protein, >= 28g fiber)
 # - For all others, "healthy" means AT MOST the benchmark (≤ recommended or less)
+##############################################
+### Gender-Specific Healthy Diet Index
+##############################################
 
-food = food %>%
+food <- food %>%
   mutate(
-    # Count how many of the 7 benchmarks each person meets (0–7)
-    healthy_score =
-      (DR1IKCAL_sum <= 2000) +   # calories ≤ 2000 kcal
-      (DR1ISODI_sum < 2300)  +   # sodium < 2300 mg
-      (DR1IPROT_sum >= 50)  +    # protein ≥ 50 g
-      (DR1ISUGR_sum <= 50)  +    # sugar ≤ 50 g
-      (DR1ICARB_sum <= 275) +    # carbs ≤ 275 g
-      (DR1IFIBE_sum >= 28)  +    # fiber ≥ 28 g
-      (DR1ITFAT_sum <= 78),      # fat ≤ 78 g
+    # Build gender-specific benchmarks
+    healthy_score = case_when(
+      # FEMALE thresholds (RIAGENDR == 2 in NHANES)
+      RIAGENDR == 2 ~ (
+        (DR1IKCAL_sum <= 2000) +    # calories
+          (DR1ISODI_sum < 2300)  +    # sodium
+          (DR1IPROT_sum >= 50)   +    # protein
+          (DR1ISUGR_sum <= 50)   +    # sugar
+          (DR1ICARB_sum <= 275)  +    # carbs
+          (DR1IFIBE_sum >= 28)   +    # fiber
+          (DR1ITFAT_sum <= 78)        # fat
+      ),
+      
+      # MALE thresholds (RIAGENDR == 1)
+      RIAGENDR == 1 ~ (
+        (DR1IKCAL_sum <= 2500) +    # calories
+          (DR1ISODI_sum < 2300)  +    # sodium
+          (DR1IPROT_sum >= 56)   +    # protein
+          (DR1ISUGR_sum <= 50)   +    # sugar
+          (DR1ICARB_sum <= 300)  +    # carbs
+          (DR1IFIBE_sum >= 31)   +    # fiber
+          (DR1ITFAT_sum <= 88)        # fat
+      )
+    ),
     
-    # healthy_diet = 1 if they meet at least 5 of 7 criteria (any 5, not in any particular order)
+    # Healthy if meeting ≥ 5 out of 7 criteria
     healthy_diet = if_else(healthy_score >= 5, 1, 0)
   )
 
@@ -227,4 +244,155 @@ conf_mat3
 # Overall accuracy
 accuracy3 = mean(pred_class3 == model_data$healthy_diet)
 accuracy3
+
+# -----------------------------
+# Confusion matrix metrics
+# -----------------------------
+
+# Cutoff used
+cutoff <- 0.5
+
+# Extract values
+TN <- conf_mat3["0","0"]
+FP <- conf_mat3["1","0"]
+FN <- conf_mat3["0","1"]
+TP <- conf_mat3["1","1"]
+
+# Accuracy
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+
+# Sensitivity (Recall)
+sensitivity <- TP / (TP + FN)
+
+# Specificity
+specificity <- TN / (TN + FP)
+
+# Precision
+precision <- TP / (TP + FP)
+
+metrics <- list(
+  Cutoff_used = cutoff,
+  Accuracy = accuracy,
+  Sensitivity = sensitivity,
+  Specificity = specificity,
+  Precision = precision
+)
+
+metrics
+
+##############################################
+# 7. Vizualization 
+##############################################
+
+#Distribution by Gender
+library(ggplot2)
+
+ggplot(food, aes(x = healthy_score, fill = RIAGENDR)) +
+  geom_histogram(position = "dodge", bins = 7, alpha = 0.85) +
+  scale_fill_manual(
+    values = c("#1f78b4", "#e31a1c"),
+    labels = c("Male", "Female")
+  ) +
+  labs(
+    title = "Distribution of Healthy Diet Scores by Gender",
+    subtitle = "Scores reflect how many dietary guidelines (0–7) were met",
+    x = "Healthy Diet Score",
+    y = "Count",
+    fill = "Gender"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(face="bold"),
+    legend.position = "right"
+  )
+
+#Predicted Probability vs Age
+ggplot(model_data, aes(x = RIDAGEYR, y = pred_prob3, color = RIAGENDR)) +
+  geom_point(alpha = 0.25) +
+  geom_smooth(method = "loess", se = FALSE, size = 1.3) +
+  scale_color_manual(
+    values = c("#1f78b4", "#e31a1c"),
+    labels = c("Male", "Female")
+  ) +
+  labs(
+    title = "Predicted Probability of Healthy Diet by Age",
+    subtitle = "Model-adjusted predictions with gender-specific diet thresholds",
+    x = "Age",
+    y = "Predicted Probability",
+    color = "Gender"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(plot.title = element_text(face="bold"))
+
+# bar chart healthy diet prevalence by race
+
+ggplot(food, aes(x = race_recode, fill = healthy_diet)) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Proportion of Healthy Diet by Race",
+    y = "Proportion",
+    x = "Race"
+  )
+
+ggplot(food, aes(x = race_recode, fill = healthy_diet)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(
+    values = c("#cccccc", "#1b9e77"),
+    labels = c("Unhealthy", "Healthy")
+  ) +
+  labs(
+    title = "Proportion of Healthy Diet Classification by Race",
+    subtitle = "Based on gender-specific benchmarks (5 out of 7 criteria)",
+    x = "Race/Ethnicity",
+    y = "Proportion",
+    fill = "Diet Classification"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(face="bold"),
+    legend.position = "right"
+  )
+
+
+
+##ROC
+
+library(pROC)
+
+roc_obj <- roc(model_data$healthy_diet, pred_prob3)
+
+roc_df <- data.frame(
+  tpr = roc_obj$sensitivities,
+  fpr = 1 - roc_obj$specificities
+)
+
+ggplot(roc_df, aes(x = fpr, y = tpr)) +
+  geom_line(size = 1.2, color = "#1f78b4") +
+  geom_abline(linetype = "dashed", color = "grey50") +
+  labs(
+    title = "ROC Curve for Healthy Diet Model",
+    subtitle = paste("AUC =", round(auc(roc_obj), 3)),
+    x = "False Positive Rate (1 - Specificity)",
+    y = "True Positive Rate (Sensitivity)"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(plot.title = element_text(face="bold"))
+
+#confusion matrix
+library(reshape2)
+
+cm_df <- as.data.frame(conf_mat3)
+names(cm_df) <- c("Predicted", "Actual", "Freq")
+
+ggplot(cm_df, aes(x = Predicted, y = Actual, fill = Freq)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = Freq), color = "white", size = 6) +
+  scale_fill_gradient(low = "#6baed6", high = "#08519c") +
+  labs(
+    title = "Confusion Matrix (Heatmap)",
+    x = "Predicted Label",
+    y = "Actual Label"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(plot.title = element_text(face="bold"))
 
