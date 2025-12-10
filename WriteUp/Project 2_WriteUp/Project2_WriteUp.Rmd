@@ -1,5 +1,0 @@
----
-title: "Project2_WriteUp"
-output: html_document
----
-
