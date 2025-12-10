@@ -249,8 +249,8 @@ accuracy3
 # Confusion matrix metrics
 # -----------------------------
 
-# Cutoff used
-cutoff <- 0.5
+# Cutoff used for consuion matrix
+cutoff <- 0.5 
 
 # Extract values
 TN <- conf_mat3["0","0"]
@@ -356,7 +356,6 @@ ggplot(food, aes(x = race_recode, fill = healthy_diet)) +
 
 
 ##ROC
-
 library(pROC)
 
 roc_obj <- roc(model_data$healthy_diet, pred_prob3)
@@ -387,7 +386,7 @@ names(cm_df) <- c("Predicted", "Actual", "Freq")
 ggplot(cm_df, aes(x = Predicted, y = Actual, fill = Freq)) +
   geom_tile(color = "white") +
   geom_text(aes(label = Freq), color = "white", size = 6) +
-  scale_fill_gradient(low = "#6baed6", high = "#08519c") +
+  scale_fill_gradient(low = "#6baed6", high = "midnightblue") +
   labs(
     title = "Confusion Matrix (Heatmap)",
     x = "Predicted Label",
