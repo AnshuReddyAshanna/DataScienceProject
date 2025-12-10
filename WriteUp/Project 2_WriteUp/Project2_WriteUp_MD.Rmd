@@ -5,7 +5,7 @@ output: html_document
 
 ## Project 2 WriteUp
 
-### Pasted the markdown from original file 
+### Pasted the markdown from original files
 
 
 ```{r}
