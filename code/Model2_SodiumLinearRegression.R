@@ -306,7 +306,7 @@ pplot_model2 = ggplot(model2_data, aes(x = p.value, y = reorder(short_term, p.va
 pplot_model2
 
 #save the plot 
-ggsave("output/EDA_pplot_sodiumM2.png", plot = pplot_model2, width = 8, height = 6, dpi = 300)
+ggsave("output/EDA_pplot_sodiumM2.png", plot = pplot_model2, width = 15, height = 10, dpi = 300)
 
 
 #Extract and Prepare Model 3 Data
@@ -348,10 +348,49 @@ pplot_model3 = ggplot(model3_data, aes(x = p.value, y = reorder(short_term, p.va
 pplot_model3
 
 #save the plot 
-ggsave("output/EDA_pplot_sodiumM3.png", plot = pplot_model3, width = 8, height = 6, dpi = 300)
+ggsave("output/EDA_pplot_sodiumM3.png", plot = pplot_model3, width = 15, height = 10, dpi = 300)
 
-# Comprehensive residual diagnostics
+# Comprehensive residual plots
 par(mfrow = c(2, 2)) 
 plot(model3, main = "Diagnostic Plots for Model 3") 
-par(mfrow = c(1, 1))
 
+
+##Transformations
+food_model$log_sodium = log(food_model$sodium)
+
+#Histogram of Log-Transformed Sodium Intake
+hlog_sodium <- ggplot(food_model, aes(log(sodium))) +
+  geom_histogram(
+    bins = 40,
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Log-Transformed Sodium Intake",
+    x = "log(Sodium)",
+    y = "Frequency"
+  ) +
+  theme(
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 20)
+  )
+# Display
+hlog_sodium
+# Save plot
+ggsave("output/EDA_hist_sodium_log.png", plot = hlog_sodium, width = 8, height = 6, dpi = 300)
+
+#Linear Regression Model With log(sodium)
+model_log <- lm(log_sodium ~ age + gender + race + income_pov_cat + timeus + hhsize, data = food_model)
+summary(model_log)
+xkablesummary(model_log)
+xkablevif(model_log)
+
+# Comprehensive residual plots
+par(mfrow = c(2, 2)) 
+plot(model_log, main = "Diagnostic Plots for Model log(sodium) ")
