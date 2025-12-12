@@ -1,0 +1,269 @@
+---
+title: "Model2_SodiumLinearRegression"
+author: "Team 1"
+date: "2025-12-12"
+output:
+  rmdformats::readthedown:
+  code_folding: show
+  number_sections: true
+  toc_depth: 3
+  toc_float: yes
+  code_folding: hide
+---
+
+```{r init, include=F}
+library(arrow)
+library(ggplot2)
+library(ezids)
+library(labelled)
+library(gtsummary)
+library(dplyr)
+library(tidyr)
+library(broom)
+library(knitr)
+library(lattice)
+library(corrplot)
+library(car)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup")
+  options(scientiic=T, digits = 3)
+  
+  # Set the root directory for all code chunks (important for reading files)
+  knitr::opts_knit$set(root.dir = "/Users/akashreddyashanna/Desktop/Fall 2025/Intro to
+                       DS/DataScienceProject")
+```
+
+# Reading the parquet file
+```{r}
+getwd()  
+food <- read_parquet("proc_data/food_final_morevars.parquet")
+str(food)
+summary(food)
+```
+
+# Preprocessing
+
+```{r}
+# Subset with only focus variables
+food_model <- subset(food, select = c(gender,age,race,timeus,hhsize,income_pov_cat,sodium))
+str(food_model)
+xkablesummary(food_model)
+
+# Checking for missing values
+sum(is.na(food_model))
+food_model <-  food_model[!is.na(food_model$income_pov_cat),]
+xkablesummary(food_model)
+```
+
+# Exploratory Data Analysis
+```{r}
+## Histogram of Sodium distribution
+hsodium <- ggplot(food_model, aes(sodium)) +
+  geom_histogram(
+    breaks=seq(0, 21000, by = 1000),
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Daily Sodium Intake",
+    x = "Total Sodium (mg)",
+    y = "Frequency"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),             # optional: lighten grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),  # title
+    axis.title = element_text(size = 20, face = "bold"),               # axis titles
+    axis.text = element_text(size = 20)                                # axis labels
+  )
+
+# Display the plot
+hsodium
+```
+**Sodium intake is heavily right-skewed which shows that most people consume moderate amounts, but there are few extreme outliers with very high intakes.**
+
+
+```{r}
+#Boxplot of Sodium Intake by genders
+box_sodium_gender <- ggplot(food_model, aes(x = gender, y = sodium, fill = gender)) +
+  geom_boxplot(
+    alpha = 0.8, 
+    color = "chocolate4"
+  ) +
+  scale_fill_brewer(
+    palette = "Set3"
+  ) +
+  labs(
+    title = "Boxplot of Sodium Intake by Genders",
+    x = "Genders",
+    y = "Sodium Intake (mg)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 20),
+    legend.position = "none"
+  )
+# Display the plot
+box_sodium_gender
+```
+**This boxplot compares sodium intake by gender. We can see that Males have a higher median sodium intake and a wider range of consumption compared to Females.**
+
+
+```{r}
+#Scatterplot of Sodium Intake by different ages
+scatter_sodium_age <- ggplot(food_model, aes(x = age, y = sodium)) +
+  geom_point(
+    alpha = 0.5, 
+    color = "chocolate4"
+    ) +
+  scale_fill_brewer(
+    palette = "Set3"
+    ) +
+  labs(
+    title = "Scatterplot of Sodium Intake by different Ages",
+    x = "Age",
+    y = "Sodium Intake (mg)"
+    ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 20),
+    legend.position = "none"
+    )
+# Display the plot
+scatter_sodium_age
+```
+**This scatterplot of sodium intake versus Age shows that data is quite dense, revealing a lot of variability at every age, but it shows that consumption of sodium decreases as people get older.**
+
+```{r}
+#Boxplot of Sodium Intake by different Ethnic Groups
+box_sodium_ethnic <- ggplot(food_model, aes(x = race, y = sodium, fill = race)) +
+  geom_boxplot(
+    alpha = 0.8, 
+    color = "chocolate4"
+  ) +
+  scale_fill_brewer(
+    palette = "Set3"
+  ) +
+  labs(
+    title = "Boxplot of Sodium Intake by different Ethnic Groups",
+    x = "Ethnic Groups",
+    y = "Sodium Intake (mg)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 18),
+    legend.position = "none"
+  )
+# Display the plot
+box_sodium_ethnic
+```
+**From this plot, we can clearly see that the Non-Hispanic Asian group has a higher median sodium intake compared to others, while Hispanic and White groups appear to have lower overall sodium levels.The variation also differs slightly that means some groups have wider spreads in sodium consumption, likely due to diverse diets within those groups.**
+
+
+```{r}
+#Boxplot of Sodium Intake by different Income Groups
+box_sodium_income <- ggplot(food_model, aes(x = income_pov_cat, y = sodium, fill = income_pov_cat)) +
+  geom_boxplot(
+    alpha = 0.8, 
+    color = "chocolate4"
+  ) +
+  scale_fill_brewer(
+    palette = "Set3"
+  ) +
+  labs(
+    title = "Boxplot of Sodium Intake by different Income Groups",
+    x = "Income Groups",
+    y = "Sodium Intake (mg)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 20),
+    legend.position = "none"
+  )
+# Display the plot
+box_sodium_income
+```
+**This shows the relationship between income and sodium.In this income is categorized by the 'income-to-poverty ratio'.From the lowest income group (<100) on the left to the highest income group (500+) on the right, we observe a slight upward trend in median sodium intake. This suggests that higher socioeconomic status is actually associated with higher sodium consumption.**
+
+```{r}
+# Display the all pairs plot
+png("output/EDA_paris_plot.png", width = 800, height = 600)
+pairs_plot <- pairs(food_model,
+      labels = colnames(food_model),
+      lower.panel = points,
+      upper.panel = panel.smooth,
+      diag.panel = NULL,
+      gap = 0.5,
+      cex.labels = 1.2,
+      font.labels = 2,
+      pch = 19,
+      col = "lightblue",
+      main = "Pairs Plot of food_model")
+dev.off()
+```
+**This pairwise plot checks for correlations between all the variables.The relationship with age shows a downward trend, confirming the earlier observation. The relationship with household size appears relatively flat, suggesting weak association. We don't see any perfect straight lines, which tells us that no single variable perfectly predicts sodium intake on its own. It also helps us confirm that our predictors aren't too heavily correlated with each other, which avoids multicollinearity issues.**
+
+```{r}
+#Correlation between variables
+food_model_num <- food_model[,c("age","hhsize","sodium")]
+str(food_model_num)
+
+#Correlation Matrix and plot
+cor_matrix <- cor(food_model_num)
+print(cor_matrix)
+corr_plot <- corrplot(cor_matrix,
+                        method = "color",
+                        col = COL2('PiYG'),
+                        type = "full",
+                        addCoef.col = "black",
+                        tl.col = "black",
+                        tl.srt = 45,
+                        diag = TRUE)
+
+```
+**Correlation matrix and plot with the subset to only numerical variables age, hhsize and sodium.We can see that age and sodium are negtively correlated while hhsize and sodium are positively correlated.**
+
