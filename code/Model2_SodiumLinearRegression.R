@@ -14,6 +14,7 @@ library(broom)
 library(knitr)
 library(lattice)
 library(corrplot)
+library(car)
 
 #Set Working Directory as the DataScienceProject folder
 getwd()  
@@ -233,9 +234,6 @@ corr_plot <- corrplot(cor_matrix,
                         diag = TRUE)
 dev.off()
 
-
-
-
 #Linear Models
 
 #Model1 with only numerical variables (age and hhsize)
@@ -267,5 +265,93 @@ anova = anova(model1,model2,model3,model4)
 anova
 xkablesummary(anova)
 
+##Best Model Visualizations
 
+#Extract and Prepare Model 2 Data
+model2_data <- tidy(model2) %>%
+  # Filter out the (Intercept) for cleaner visualization of predictors
+  filter(term != "(Intercept)") %>% 
+  # Create a significance label
+  mutate(
+    is_significant = p.value < 0.05,
+    short_term = gsub("raceNon-Hispanic |income_pov_cat|gender", "", term) 
+  )
+
+#Create the P-value Bar Plot
+pplot_model2 = ggplot(model2_data, aes(x = p.value, y = reorder(short_term, p.value), fill = is_significant)) +
+  geom_bar(stat = "identity") +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "red", size = 1) +
+  geom_text(aes(label = round(p.value, 4)), 
+            hjust = -0.1, 
+            color = "black", 
+            size = 7) +
+  xlim(0, max(model2_data$p.value) * 1.1) +
+  scale_fill_manual(values = c("TRUE" = "darkgreen", "FALSE" = "lightcoral"),
+                    labels = c("Not Significant (p ≥ 0.05)", "Significant (p < 0.05)")) +
+  labs(
+    title = "P-values of Predictors in Model 2",
+    x = "P-value",
+    y = "Predictor Term",
+    fill = "Significance"
+  ) +
+  theme(
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 15, face = "bold"),
+    axis.text  = element_text(size = 15),
+    legend.position = "bottom"
+  )
+
+#display the plot 
+pplot_model2
+
+#save the plot 
+ggsave("output/EDA_pplot_sodiumM2.png", plot = pplot_model2, width = 8, height = 6, dpi = 300)
+
+
+#Extract and Prepare Model 3 Data
+pplott_model3 = model3_data <- tidy(model3) %>%
+  # Filter out the (Intercept) for cleaner visualization of predictors
+  filter(term != "(Intercept)") %>% 
+  # Create a significance label
+  mutate(
+    is_significant = p.value < 0.05,
+    short_term = gsub("raceNon-Hispanic |income_pov_cat|gender", "", term) 
+  )
+
+#Create the P-value Bar Plot
+pplot_model3 = ggplot(model3_data, aes(x = p.value, y = reorder(short_term, p.value), fill = is_significant)) +
+  geom_bar(stat = "identity") +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "red", size = 1) +
+  geom_text(aes(label = round(p.value, 4)), 
+            hjust = -0.1, 
+            color = "black", 
+            size = 3) +
+  xlim(0, max(model3_data$p.value) * 1.1) +
+  scale_fill_manual(values = c("TRUE" = "darkgreen", "FALSE" = "lightcoral"),
+                    labels = c("Not Significant (p ≥ 0.05)", "Significant (p < 0.05)")) +
+  labs(
+    title = "P-values of Predictors in Model 3",
+    x = "P-value",
+    y = "Predictor Term",
+    fill = "Significance"
+  ) +
+  theme(
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 15, face = "bold"),
+    axis.text  = element_text(size = 15),
+    legend.position = "bottom"
+  )
+
+#display the plot 
+pplot_model3
+
+#save the plot 
+ggsave("output/EDA_pplot_sodiumM3.png", plot = pplot_model3, width = 8, height = 6, dpi = 300)
+
+# Comprehensive residual diagnostics
+par(mfrow = c(2, 2)) 
+plot(model3, main = "Diagnostic Plots for Model 3") 
+par(mfrow = c(1, 1))
 
