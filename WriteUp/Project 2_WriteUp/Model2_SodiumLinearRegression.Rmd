@@ -267,3 +267,160 @@ corr_plot <- corrplot(cor_matrix,
 ```
 **Correlation matrix and plot with the subset to only numerical variables age, hhsize and sodium.We can see that age and sodium are negtively correlated while hhsize and sodium are positively correlated.**
 
+
+#Linear Models
+
+##Model1 with only numerical variables (age and hhsize)
+```{r}
+model1 = lm(sodium ~ age+hhsize, data = food_model)
+summary(model1)
+xkabledply(model1, title = "Model for sodium with age and hhsize as regressors" )
+xkablevif(model1)
+```
+**We chose age and hhsize as the initial predictors because they are key numerical demographic variables**
+
+**Coefficient Interpretation**
+
+- **Intercept = 3896.513**, which represents the expected daily sodium intake (in milligrams) when both age and household size are zero. While this scenario is not practically meaningful, the intercept serves as a baseline level of sodium intake against which the effects of age and household size are measured.
+
+- **Age Coefficient = −13.605**, For every one-year increase in age, daily sodium intake decreases by approximately 13.6 mg on average, holding household size constant.This shows a negative linear relationship between age and sodium intake, suggesting that older individuals tend to consume less sodium than younger individuals.
+
+- **hhsize Coefficient = −27.961**, For each additional household member, sodium intake decreases by approximately 28 mg on average, holding age constant.
+
+**P-Values:**
+
+- **Intercept p-value < 2e-16**. This is highly statistically significant, indicating strong evidence that the baseline sodium intake differs from zero.
+
+- **Age p-value < 2e-16**.This extremely small p-value indicates that age is a highly significant predictor of sodium intake. We reject the null hypothesis that the age coefficient equals zero.
+
+- **hhsize p-value = 0.138**. This p-value exceeds alpha levels (0.05), so we fail to reject the null hypothesis for household size. Thus, household size does not significantly predict sodium intake in this model.
+
+**Mutiple R-squared = 0.018113 (1.81%)**. This model explains approximately 1.8% of the total variation in daily sodium intake. This indicates that age and household size alone capture only a small portion of the factors influencing sodium consumption.
+
+**Adjusted R-squared = 0.01767**. The adjusted value confirms the limited explanatory power of the model after accounting for the number of predictors.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, meaning that at least one predictor (in this case, age) is associated with sodium intake.
+
+**This baseline model shows that age is a strong and statistically significant predictor of sodium intake, with older individuals consuming less sodium on average. However, household size does not have a significant effect, and the low R-squared value indicates that most of the variation in sodium intake is explained by other demographic and socioeconomic factors not included in this model.**
+
+
+##Model2 with all focus variables (including categorical) 
+```{r}
+model2 = lm(sodium ~ age+gender+race+income_pov_cat+timeus, data = food_model)
+summary(model2)
+xkabledply(model2, title = "Model for sodium with all focus variables")
+xkablevif(model2)
+```
+
+**We chose Model 2 to expand upon Model 1 by incorporating key categorical demographic and socioeconomic variables such as age, gender, race, income category, and length of time in the U.S,to better explain variation in sodium intake.**
+
+**Coefficient Interpretation**
+
+- **Age Coefficient = −14.71**, For every one-year increase in age, daily sodium intake decreases by 14.71 mg on average, holding other variables constant.This shows a negative linear relationship between age and sodium intake, suggesting that older individuals tend to consume less sodium than younger individuals.
+
+- **GenderFemale Coefficient = −862.96**,This indicates that females are predicted to consume approximately 863mg less sodium than males, holding other variables constant.This suggest substantial gender based differences in dietary sodium intake.
+
+- **Race Non-Hispanic Asian Coefficient = 392.32**, This shows that these individuals consume significantly more sodium than other ethnic groups, holding other variables constant.
+
+- **Income Categories Coefficient**,Individuals in the 300–400% poverty threshold and 500%+ categories have significantly higher sodium intake compared to lower income group, suggesting that higher income does not necessarily correspond to healthier sodium consumption patterns.
+
+- **timeUS Coefficients**, people who have been in US for 20 years and more have higher sodium intake while people who have been in US for 5 to 15 years have a negative effect as the sodium intake decreases with one unit increase in timeUS. 
+
+**P-Values:**
+
+- **Age  and genderFemale p-value < 2e-16**.This extremely small p-value indicates that age and genderFemale are highly significant predictors of sodium intake. We reject the null hypothesis that the age and genderFemale coefficient equals zero.
+
+- **Race Categories p-value** Categories like Non-Hispanic White (p = 0.0278) and Non-Hispanic Asia (0.0032) were statistically significant (p < 0.05), While Non-Hispanic Black (0.1803) and Other Race - Including Multi-Racial (p=0.1171) do not show statistically significant differences because p > 0.05.
+
+- **Income_pov_cat p-values** Categories like income_pov_cat300-400 (p=3.1e-05) and income_pov_cat500+ (p=5.9e-05) were statistically significant (p < 0.05), while income_pov_cat100-200 (p = 0.2253), income_pov_cat200-300 (p = 0.0588) and income_pov_cat400-500 (p = 0.0704) were statistically not significant because p > 0.05.
+
+- **timeus p-value = 0.9707**, this is not statistically significant, indicating that duration do not reliably predicts sodium intake in this model.
+
+**Mutiple R-squared = 0.101 (1.01%)**. This model explains approximately 10.1% of the total variation in daily sodium intake. This model explains over five times more variance than Model 1, representing a substantial improvement in explanatory power.
+
+**Adjusted R-squared = 0.0986**. The adjusted value accounts for the 13 predictors and confirms that the additional variables meaningfully contribute to the model.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, meaning that the predictors, as a group, are associated with sodium intake.
+
+**Model 2 demonstrates that gender, age, income_pov_cat, and certain ethnic groups are strong predictors of sodium intake. Including demographic and socioeconomic variables significantly improves model performance, though a large portion of variability remains unexplained.**
+
+```{r}
+##Model3 with age and income as interaction terms
+model3 = lm(sodium ~ age+gender+race*income_pov_cat, data = food_model)
+summary(model3)
+xkabledply(model3, title = "Model for sodium with all focus variables including interaction between race and income")
+xkablevif(model3)
+```
+**We chose Model 2 to expand upon Model 1 by incorporating key categorical demographic and socioeconomic variables such as age, gender, race, income category, and length of time in the U.S,to better explain variation in sodium intake.**
+
+**Coefficient Interpretation**
+
+- **Main Effect Coefficients** The interpretation of main effects (Age, Gender) becomes more complex, as their effect is now dependent on the interaction terms.
+
+- **Interaction Term Coefficients (race * income_pov_cat)** This generated 20 new coefficients. These coefficients represent the additional increase or decrease in sodium intake for a specific race within a specific income category, beyond what the two main effects would predict.
+
+**P-Values:**
+
+- **Age  and genderFemale p-value < 2e-16**.This extremely small p-value indicates that age and genderFemale are highly significant predictors of sodium intake. We reject the null hypothesis that the age and genderFemale coefficient equals zero.
+
+- **Race and Income Categories p-value** Several ethnic categories like Non-Hispanic black, Non-Hispanic Asian and income categories like 300–400%, 400–500% and 500+ were statistically significant (p < 0.05), While others do not show statistically significant differences because p > 0.05.
+
+- **Race * Income_pov_cat p-values** The majority of the individual interaction terms were not statistically significant (p > 0.05), meaning most specific race-by-income combinations do not have a unique effect.
+
+**Mutiple R-squared = 0.108 (1.08%)**. This model explains approximately 10.8% of the total variation in daily sodium intake. This model explains the highest percentage of variation, a 0.6% increase over Model 2.
+
+**Adjusted R-squared = 0.101**. The adjusted value accounts for these predictors and confirms that the additional variables meaningfully contribute to the model.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, meaning that the predictors, as a group, are associated with sodium intake.
+
+**Model 3 is statistically superior to Model 2, confirmed by the higher Adjusted R-squared. However, this marginal gain comes at a high cost as the model is significantly more complex (32 terms), and the poor significance of most individual interaction terms makes it extremely difficult to interpret for practical use.**
+
+
+```{r}
+#Model4 with variables up to 3 interaction terms
+model4 = lm(sodium ~ age + (gender + race + income_pov_cat)^3, data = food_model)
+summary(model4)
+xkabledply(model4, title = "Model for sodium with  variables upto 3 interactions")
+xkablevif(model4)
+```
+
+**Model 4 was an attempt to add even more complexity by including additional interaction terms, aiming for the best predictive fit.This model includes all two-way and three-way interactions among gender, race, and income, in addition to age.**
+
+**Coeffients Interpretation**
+
+- **Main Effect Coefficients** The interpretation of main effects (Age, Gender) becomes more complex, as their effect is now dependent on the interaction terms.
+
+- **Interaction Term Coefficients** This generated 49 new coefficients. These coefficients represent the additional increase or decrease in sodium intake for a specific race within a specific income category, beyond what the two main effects would predict.
+
+**P-Values:**
+
+- **Age  and genderFemale p-value < 2e-16**.This extremely small p-value indicates that age and genderFemale are highly significant predictors of sodium intake. We reject the null hypothesis that the age and genderFemale coefficient equals zero.
+
+- **Race and Income Categories p-value** Almost all ethnic categories and income categories like are not statistically significant (p > 0.05), While only income_pov_cat300-400 is statistically significant (p = 0.00029).All of them lost statistical significance due to the inclusion of higher-order interactions, which absorb explanatory power.
+
+- **Interaction Terms p-values** A small number of two-way interactions are statistically significant, but many are not.This suggests over-parameterization, where added complexity does not translate into substantial explanatory gains.
+
+**Mutiple R-squared = 0.116 (1.16%)**. This model explains approximately 11.6% of the total variation in daily sodium intake. This model explains the highest percentage of variation among all models.
+
+**Adjusted R-squared = 0.103**. The Adjusted R-squared score is likely lower than Model 3's, as the addition of non-significant terms results in an expense that exceeds the minor gain in fit.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, due to the strong main effects (Age, Gender) carried over from Model 2.
+
+**While Model 4 achieves the highest Multiple R-squared, it suffers from interpretability issues and limited marginal improvement. The large number of interaction terms increases variance and reduces clarity, making it less suitable for practical inference.**
+
+```{r}
+#Anova Testing
+anova = anova(model1,model2,model3,model4)
+anova
+xkablesummary(anova)
+```
+
+The ANOVA results compare four nested linear regression models for sodium intake, each adding progressively more demographic and socioeconomic complexity.
+
+**Model 2 vs. Model 1** - Adding gender, race, income, and time in the U.S. leads to a large and statistically significant reduction in residual sum of squares (F = 35.77, p < 2e-16). This indicates that demographic and socioeconomic variables substantially improve the model’s explanatory power beyond age and household size alone.
+
+**Model 3 vs. Model 2** - Introducing race * income interaction terms results in a statistically significant but modest improvement in model fit (F = 1.62, p = 0.047). This suggests that the effect of income on sodium intake differs across racial groups, although the magnitude of improvement is limited.
+
+**Model 4 vs. Model 3**- Adding higher-order (three-way) interactions does not significantly improve model fit at the alpha level (p = 0.097). This indicates diminishing returns from increased model complexity and potential overfitting.
+
+**Model 2 provides a strong improvement over the baseline, while Model 3 offers additional insight into socioeconomic heterogeneity with minimal complexity increase. Model 4 does not justify its added complexity. Therefore, Model 3 represents the best balance between explanatory power, interpretability, and statistical justification for modeling determinants of sodium intake.**
