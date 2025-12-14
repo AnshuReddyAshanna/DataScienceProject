@@ -4,11 +4,10 @@ author: "Team 1"
 date: "2025-12-12"
 output:
   rmdformats::readthedown:
-  code_folding: show
-  number_sections: true
-  toc_depth: 3
-  toc_float: yes
-  code_folding: hide
+    number_sections: true
+    toc_depth: 3
+    toc_float: yes
+    code_folding: hide
 ---
 
 ```{r init, include=F}
@@ -34,21 +33,18 @@ knitr::opts_chunk$set(
   results = "markup")
   options(scientiic=T, digits = 3)
   
-  # Set the root directory for all code chunks (important for reading files)
-  knitr::opts_knit$set(root.dir = "/Users/akashreddyashanna/Desktop/Fall 2025/Intro to
-                       DS/DataScienceProject")
+# Set the root directory for all code chunks (important for reading files)
+knitr::opts_knit$set(root.dir = "/Users/akashreddyashanna/Desktop/Fall 2025/Intro to DS/DataScienceProject")
 ```
 
 # Reading the parquet file
 ```{r}
-getwd()  
 food <- read_parquet("proc_data/food_final_morevars.parquet")
 str(food)
 summary(food)
 ```
 
 # Preprocessing
-
 ```{r}
 # Subset with only focus variables
 food_model <- subset(food, select = c(gender,age,race,timeus,hhsize,income_pov_cat,sodium))
@@ -62,8 +58,8 @@ xkablesummary(food_model)
 ```
 
 # Exploratory Data Analysis
-```{r}
 ## Histogram of Sodium distribution
+```{r}
 hsodium <- ggplot(food_model, aes(sodium)) +
   geom_histogram(
     breaks=seq(0, 21000, by = 1000),
@@ -92,11 +88,11 @@ hsodium <- ggplot(food_model, aes(sodium)) +
 # Display the plot
 hsodium
 ```
+
 **Sodium intake is heavily right-skewed which shows that most people consume moderate amounts, but there are few extreme outliers with very high intakes.**
 
-
+## Boxplot of Sodium Intake by genders
 ```{r}
-#Boxplot of Sodium Intake by genders
 box_sodium_gender <- ggplot(food_model, aes(x = gender, y = sodium, fill = gender)) +
   geom_boxplot(
     alpha = 0.8, 
@@ -126,11 +122,11 @@ box_sodium_gender <- ggplot(food_model, aes(x = gender, y = sodium, fill = gende
 # Display the plot
 box_sodium_gender
 ```
+
 **This boxplot compares sodium intake by gender. We can see that Males have a higher median sodium intake and a wider range of consumption compared to Females.**
 
-
+## Scatterplot of Sodium Intake by different ages
 ```{r}
-#Scatterplot of Sodium Intake by different ages
 scatter_sodium_age <- ggplot(food_model, aes(x = age, y = sodium)) +
   geom_point(
     alpha = 0.5, 
@@ -160,10 +156,11 @@ scatter_sodium_age <- ggplot(food_model, aes(x = age, y = sodium)) +
 # Display the plot
 scatter_sodium_age
 ```
+
 **This scatterplot of sodium intake versus Age shows that data is quite dense, revealing a lot of variability at every age, but it shows that consumption of sodium decreases as people get older.**
 
+## Boxplot of Sodium Intake by different Ethnic Groups
 ```{r}
-#Boxplot of Sodium Intake by different Ethnic Groups
 box_sodium_ethnic <- ggplot(food_model, aes(x = race, y = sodium, fill = race)) +
   geom_boxplot(
     alpha = 0.8, 
@@ -193,11 +190,11 @@ box_sodium_ethnic <- ggplot(food_model, aes(x = race, y = sodium, fill = race)) 
 # Display the plot
 box_sodium_ethnic
 ```
+
 **From this plot, we can clearly see that the Non-Hispanic Asian group has a higher median sodium intake compared to others, while Hispanic and White groups appear to have lower overall sodium levels.The variation also differs slightly that means some groups have wider spreads in sodium consumption, likely due to diverse diets within those groups.**
 
-
+## Boxplot of Sodium Intake by different Income Groups
 ```{r}
-#Boxplot of Sodium Intake by different Income Groups
 box_sodium_income <- ggplot(food_model, aes(x = income_pov_cat, y = sodium, fill = income_pov_cat)) +
   geom_boxplot(
     alpha = 0.8, 
@@ -227,10 +224,11 @@ box_sodium_income <- ggplot(food_model, aes(x = income_pov_cat, y = sodium, fill
 # Display the plot
 box_sodium_income
 ```
+
 **This shows the relationship between income and sodium.In this income is categorized by the 'income-to-poverty ratio'.From the lowest income group (<100) on the left to the highest income group (500+) on the right, we observe a slight upward trend in median sodium intake. This suggests that higher socioeconomic status is actually associated with higher sodium consumption.**
 
+## Allpairs plot 
 ```{r}
-# Display the all pairs plot
 png("output/EDA_paris_plot.png", width = 800, height = 600)
 pairs_plot <- pairs(food_model,
       labels = colnames(food_model),
@@ -247,12 +245,12 @@ dev.off()
 ```
 **This pairwise plot checks for correlations between all the variables.The relationship with age shows a downward trend, confirming the earlier observation. The relationship with household size appears relatively flat, suggesting weak association. We don't see any perfect straight lines, which tells us that no single variable perfectly predicts sodium intake on its own. It also helps us confirm that our predictors aren't too heavily correlated with each other, which avoids multicollinearity issues.**
 
+## Correlation Matrix and plot
 ```{r}
-#Correlation between variables
+#Subset of only numerical variables
 food_model_num <- food_model[,c("age","hhsize","sodium")]
 str(food_model_num)
 
-#Correlation Matrix and plot
 cor_matrix <- cor(food_model_num)
 print(cor_matrix)
 corr_plot <- corrplot(cor_matrix,
@@ -268,15 +266,16 @@ corr_plot <- corrplot(cor_matrix,
 **Correlation matrix and plot with the subset to only numerical variables age, hhsize and sodium.We can see that age and sodium are negtively correlated while hhsize and sodium are positively correlated.**
 
 
-#Linear Models
+# Linear Models
 
-##Model1 with only numerical variables (age and hhsize)
+## Model-1 with only numerical variables (age and hhsize)
 ```{r}
 model1 = lm(sodium ~ age+hhsize, data = food_model)
 summary(model1)
 xkabledply(model1, title = "Model for sodium with age and hhsize as regressors" )
 xkablevif(model1)
 ```
+
 **We chose age and hhsize as the initial predictors because they are key numerical demographic variables**
 
 **Coefficient Interpretation**
@@ -304,7 +303,7 @@ xkablevif(model1)
 **This baseline model shows that age is a strong and statistically significant predictor of sodium intake, with older individuals consuming less sodium on average. However, household size does not have a significant effect, and the low R-squared value indicates that most of the variation in sodium intake is explained by other demographic and socioeconomic factors not included in this model.**
 
 
-##Model2 with all focus variables (including categorical) 
+## Model-2 with all focus variables (including categorical) 
 ```{r}
 model2 = lm(sodium ~ age+gender+race+income_pov_cat+timeus, data = food_model)
 summary(model2)
@@ -344,13 +343,14 @@ xkablevif(model2)
 
 **Model 2 demonstrates that gender, age, income_pov_cat, and certain ethnic groups are strong predictors of sodium intake. Including demographic and socioeconomic variables significantly improves model performance, though a large portion of variability remains unexplained.**
 
+## Model-3 with age and income as interaction terms
 ```{r}
-##Model3 with age and income as interaction terms
 model3 = lm(sodium ~ age+gender+race*income_pov_cat, data = food_model)
 summary(model3)
 xkabledply(model3, title = "Model for sodium with all focus variables including interaction between race and income")
 xkablevif(model3)
 ```
+
 **We chose Model 2 to expand upon Model 1 by incorporating key categorical demographic and socioeconomic variables such as age, gender, race, income category, and length of time in the U.S,to better explain variation in sodium intake.**
 
 **Coefficient Interpretation**
@@ -375,9 +375,8 @@ xkablevif(model3)
 
 **Model 3 is statistically superior to Model 2, confirmed by the higher Adjusted R-squared. However, this marginal gain comes at a high cost as the model is significantly more complex (32 terms), and the poor significance of most individual interaction terms makes it extremely difficult to interpret for practical use.**
 
-
+## Model-4 with variables up to 3 interaction terms
 ```{r}
-#Model4 with variables up to 3 interaction terms
 model4 = lm(sodium ~ age + (gender + race + income_pov_cat)^3, data = food_model)
 summary(model4)
 xkabledply(model4, title = "Model for sodium with  variables upto 3 interactions")
@@ -386,7 +385,7 @@ xkablevif(model4)
 
 **Model 4 was an attempt to add even more complexity by including additional interaction terms, aiming for the best predictive fit.This model includes all two-way and three-way interactions among gender, race, and income, in addition to age.**
 
-**Coeffients Interpretation**
+**Coefficients Interpretation**
 
 - **Main Effect Coefficients** The interpretation of main effects (Age, Gender) becomes more complex, as their effect is now dependent on the interaction terms.
 
@@ -408,8 +407,10 @@ xkablevif(model4)
 
 **While Model 4 achieves the highest Multiple R-squared, it suffers from interpretability issues and limited marginal improvement. The large number of interaction terms increases variance and reduces clarity, making it less suitable for practical inference.**
 
+# Model Testing
+
+## Anova Test
 ```{r}
-#Anova Testing
 anova = anova(model1,model2,model3,model4)
 anova
 xkablesummary(anova)
@@ -424,3 +425,111 @@ The ANOVA results compare four nested linear regression models for sodium intake
 **Model 4 vs. Model 3**- Adding higher-order (three-way) interactions does not significantly improve model fit at the alpha level (p = 0.097). This indicates diminishing returns from increased model complexity and potential overfitting.
 
 **Model 2 provides a strong improvement over the baseline, while Model 3 offers additional insight into socioeconomic heterogeneity with minimal complexity increase. Model 4 does not justify its added complexity. Therefore, Model 3 represents the best balance between explanatory power, interpretability, and statistical justification for modeling determinants of sodium intake.**
+
+## Best Model Visualizations
+
+```{r}
+#Extract and Prepare Model 2 Data
+model2_data <- tidy(model2) %>%
+  # Filter out the (Intercept) for cleaner visualization of predictors
+  filter(term != "(Intercept)") %>% 
+  # Create a significance label
+  mutate(
+    is_significant = p.value < 0.05,
+    short_term = gsub("raceNon-Hispanic |income_pov_cat|gender", "", term) 
+  )
+
+#Create the P-value Bar Plot
+pplot_model2 = ggplot(model2_data, aes(x = p.value, y = reorder(short_term, p.value), fill = is_significant)) +
+  geom_bar(stat = "identity") +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "red", size = 1) +
+  geom_text(aes(label = round(p.value, 4)), 
+            hjust = -0.1, 
+            color = "black", 
+            size = 7) +
+  xlim(0, max(model2_data$p.value) * 1.1) +
+  scale_fill_manual(values = c("TRUE" = "darkgreen", "FALSE" = "lightcoral"),
+                    labels = c("Not Significant (p ≥ 0.05)", "Significant (p < 0.05)")) +
+  labs(
+    title = "P-values of Predictors in Model 2",
+    x = "P-value",
+    y = "Predictor Term",
+    fill = "Significance"
+  ) +
+  theme(
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 15, face = "bold"),
+    axis.text  = element_text(size = 15),
+    legend.position = "bottom"
+  )
+
+#display the plot 
+pplot_model2
+```
+
+This plot shows the p-values of the predictors of model2. This shows green bars for predictors like Age and Gender, indicating they are statistically significant, while red bars for predictors like race, income and time in us indicating they are not statistically significant.
+
+```{r}
+#Extract and Prepare Model 3 Data
+pplott_model3 = model3_data <- tidy(model3) %>%
+  # Filter out the (Intercept) for cleaner visualization of predictors
+  filter(term != "(Intercept)") %>% 
+  # Create a significance label
+  mutate(
+    is_significant = p.value < 0.05,
+    short_term = gsub("raceNon-Hispanic |income_pov_cat|gender", "", term) 
+  )
+
+#Create the P-value Bar Plot
+pplot_model3 = ggplot(model3_data, aes(x = p.value, y = reorder(short_term, p.value), fill = is_significant)) +
+  geom_bar(stat = "identity") +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "red", size = 1) +
+  geom_text(aes(label = round(p.value, 4)), 
+            hjust = -0.1, 
+            color = "black", 
+            size = 3) +
+  xlim(0, max(model3_data$p.value) * 1.1) +
+  scale_fill_manual(values = c("TRUE" = "darkgreen", "FALSE" = "lightcoral"),
+                    labels = c("Not Significant (p ≥ 0.05)", "Significant (p < 0.05)")) +
+  labs(
+    title = "P-values of Predictors in Model 3",
+    x = "P-value",
+    y = "Predictor Term",
+    fill = "Significance"
+  ) +
+  theme(
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 15, face = "bold"),
+    axis.text  = element_text(size = 15),
+    legend.position = "bottom"
+  )
+
+#display the plot 
+pplot_model3
+```
+
+This plot shows the p-values of the predictors of model3.Most of the interaction terms added in Model 3 have high p-values, meaning they are not statistically significant individually.
+
+**Since Model 3 is much harder to interpret without adding meaningful predictive power, we determined that Model 2 was the better choice for interpretability.**
+
+
+```{r}
+# Comprehensive residual plots
+par(mfrow = c(2, 2)) 
+plot(model3, main = "Diagnostic Plots for Model 3") 
+```
+
+The residual diagnostics indicate that several key linear regression assumptions are violated. 
+
+**The Residuals vs. Fitted plot** shows a clear funnel-shaped pattern, with residual variance increasing as fitted sodium intake values rise. This indicates heteroscedasticity, meaning the model’s prediction errors are not constant across levels of the outcome.
+
+**The Q–Q plot** reveals substantial deviations from the reference line, particularly in the upper tail. This suggests that the residuals are not normally distributed and are right-skewed, with more extreme high sodium values than expected under normality.
+
+**The Residuals vs. Leverage plot** identifies a small number of observations with large residuals; however, none exhibit excessively high leverage or Cook’s distance. This indicates that while outliers exist, they are not highly influencing the estimated regression coefficients.
+
+**Despite the clear assumption violations, Model 2 is choosen as the best untransformed option due to its superior interpretability and simplicity. These issues necessitate a data transformation (e.g Log-transformation) to produce a statistically robust model.**
+
+
+
