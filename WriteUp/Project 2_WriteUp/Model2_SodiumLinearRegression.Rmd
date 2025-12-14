@@ -184,7 +184,7 @@ box_sodium_ethnic <- ggplot(food_model, aes(x = race, y = sodium, fill = race)) 
     #Font sizes
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 20, face = "bold"),
-    axis.text  = element_text(size = 18),
+    axis.text  = element_text(size = 8),
     legend.position = "none"
   )
 # Display the plot
@@ -218,7 +218,7 @@ box_sodium_income <- ggplot(food_model, aes(x = income_pov_cat, y = sodium, fill
     #Font sizes
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
     axis.title = element_text(size = 20, face = "bold"),
-    axis.text  = element_text(size = 20),
+    axis.text  = element_text(size = 15),
     legend.position = "none"
   )
 # Display the plot
@@ -229,7 +229,6 @@ box_sodium_income
 
 ## Allpairs plot 
 ```{r}
-png("output/EDA_paris_plot.png", width = 800, height = 600)
 pairs_plot <- pairs(food_model,
       labels = colnames(food_model),
       lower.panel = points,
@@ -241,8 +240,8 @@ pairs_plot <- pairs(food_model,
       pch = 19,
       col = "lightblue",
       main = "Pairs Plot of food_model")
-dev.off()
 ```
+
 **This pairwise plot checks for correlations between all the variables.The relationship with age shows a downward trend, confirming the earlier observation. The relationship with household size appears relatively flat, suggesting weak association. We don't see any perfect straight lines, which tells us that no single variable perfectly predicts sodium intake on its own. It also helps us confirm that our predictors aren't too heavily correlated with each other, which avoids multicollinearity issues.**
 
 ## Correlation Matrix and plot
@@ -263,6 +262,7 @@ corr_plot <- corrplot(cor_matrix,
                         diag = TRUE)
 
 ```
+
 **Correlation matrix and plot with the subset to only numerical variables age, hhsize and sodium.We can see that age and sodium are negtively correlated while hhsize and sodium are positively correlated.**
 
 
@@ -351,7 +351,7 @@ xkabledply(model3, title = "Model for sodium with all focus variables including 
 xkablevif(model3)
 ```
 
-**We chose Model 2 to expand upon Model 1 by incorporating key categorical demographic and socioeconomic variables such as age, gender, race, income category, and length of time in the U.S,to better explain variation in sodium intake.**
+**The model3 introduces interaction effects between race and income, allowing the relationship between income and sodium intake to differ across racial/ethnic groups.**
 
 **Coefficient Interpretation**
 
@@ -459,8 +459,8 @@ pplot_model2 = ggplot(model2_data, aes(x = p.value, y = reorder(short_term, p.va
   theme(
     #Font sizes
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-    axis.title = element_text(size = 15, face = "bold"),
-    axis.text  = element_text(size = 15),
+    axis.title = element_text(size = 8, face = "bold"),
+    axis.text  = element_text(size = 8),
     legend.position = "bottom"
   )
 
@@ -501,8 +501,8 @@ pplot_model3 = ggplot(model3_data, aes(x = p.value, y = reorder(short_term, p.va
   theme(
     #Font sizes
     plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-    axis.title = element_text(size = 15, face = "bold"),
-    axis.text  = element_text(size = 15),
+    axis.title = element_text(size = 8, face = "bold"),
+    axis.text  = element_text(size = 8),
     legend.position = "bottom"
   )
 
@@ -532,4 +532,108 @@ The residual diagnostics indicate that several key linear regression assumptions
 **Despite the clear assumption violations, Model 2 is choosen as the best untransformed option due to its superior interpretability and simplicity. These issues necessitate a data transformation (e.g Log-transformation) to produce a statistically robust model.**
 
 
+# Transformations
+```{r}
+food_model$log_sodium = log(food_model$sodium)
+```
 
+To address the normality and heteroscedasticity issues we just identified, we applied a logarithmic transformation to our outcome variable.
+
+
+## Histogram of Log-Transformed Sodium Intake
+```{r}
+hlog_sodium <- ggplot(food_model, aes(log(sodium))) +
+  geom_histogram(
+    bins = 40,
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Log-Transformed Sodium Intake",
+    x = "log(Sodium)",
+    y = "Frequency"
+  ) +
+  theme(
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 20)
+  )
+# Display
+hlog_sodium
+```
+
+This histogram shows the distribution of log-transformed sodium intake. After log transformation, the distribution is much more symmetric and bell-shaped, approximating a normal distribution much better.
+
+## Linear Regression Model With log(sodium)
+```{r}
+model_log <- lm(log_sodium ~ age + gender + race + income_pov_cat + timeus + hhsize, data = food_model)
+summary(model_log)
+xkablevif(model_log)
+```
+
+**This model uses log(sodium intake) as the dependent variable to address skewness and heteroscedasticity observed in the untransformed models.The predictors include age, gender, race, income category, length of time in the U.S., and household size.**
+
+**Coefficient Interpretation**
+
+- **Intercept = 8.040911**, which represents the expected daily log sodium intake (in milligrams) when all variables are zero. While not directly meaningful substantively, it serves as the baseline from which all demographic effects are measured.
+
+- **Age Coefficient = −0.0048**, Holding all other variables constant, each additional year of age is associated with approximately a 0.48% decrease in daily sodium intake. This suggests that older individuals tend to consume less sodium than younger individuals.This shows a negative effect on log sodium intake.
+
+- **Gender(Female) Coefficient = -0.270793**, Being female is associated with approximately a 27% lower sodium intake compared to males, after controlling for all other factors. This is one of the largest effects in the model.So, Gender is a strong and highly significant predictor.
+
+- **Race Non-Hispanic White Coefficients = 0.073** - Non-Hispanic White adults are predicted to consume approximately 7.62% more sodium than the reference group Hispanic.
+
+- **Race Non-Hispanic Asian Coefficients = 0.147** - Non-Hispanic Asian adults are predicted to consume approximately 15.86% more sodium than the reference group Hispanic.
+
+- **income_pov_cat500+ Coefficients = 0.183357** - Individuals in the highest income category are predicted to consume approximately 18.33% more sodium than the lowest income category (<100%, the reference).
+
+- **income_pov_cat300-400 Coefficients = 0.190937** - Individuals in the 300-400% income category are predicted to consume approximately 19.09% more sodium than the lowest income category (<100%, the reference).
+
+**P-Values:**
+
+- **Highly Significant Predictors**: Age, genderFemale, and all income categories, are highly significant.
+
+- **Significant Predictors (p < 0.05)**: raceNon-Hispanic White, raceNon-Hispanic Asian, raceOther Race, and income_pov_cat100-200 are statistically significant
+predictors.
+
+- **Non-Significant Predictors (p > 0.05)**: raceNon-Hispanic Black (p=0.585), hhsize (p=0.443), and the two timeus categories are not statistically significant predictors of sodium intake.
+
+**Mutiple R-squared = 0.101 (10.1%)**. This model explains approximately 10.1% of the total variation in daily sodium intake.
+
+**Adjusted R-squared = 0.0983** The adjusted value confirms that the demographic and socioeconomic factors explain slightly under 10% of the variance.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, meaning that the predictors, as a group,predict log(sodium) intake.
+
+**The model log(sodium) is the best model as it satisfies the underlying regression assumptions. It provides strong evidence that Gender, Age, Race, and Income-to-Poverty Ratio are the most significant demographic drivers of sodium intake, with females consuming less and older, higher-income, and certain non-Hispanic groups consuming more..**
+
+
+## Comprehensive residual plots
+```{r}
+par(mfrow = c(2, 2)) 
+plot(model_log, main = "Diagnostic Plots for Model log(sodium) ")
+```
+
+These plots for the final model with log(sodium intake) as the dependent variable indicate that the linear regression assumptions are substantially better satisfied compared to the untransformed models.
+
+**Residuals vs Fitted**:The residuals are now randomly scattered around zero with a relatively constant spread across all fitted values.This indicates that the log transformation has effectively corrected the heteroscedasticity problem. Prediction errors are now more stable across low, medium, and high levels of sodium intake.
+
+**Normal Q–Q Plot**:The residuals follow the theoretical normal line much more closely than in the untransformed specification.Although mild deviations remain in the extreme tails, the central portion of the distribution aligns well with the diagonal, suggesting that the normality assumption is reasonably satisfied.
+
+**Residuals vs Leverage**: A small number of observations show relatively large standardized residuals; however, none approach the Cook’s distance threshold. This indicates that while some outliers remain, they do not exert disproportionate influence on the estimated regression coefficients.
+
+**The log transformation successfully mitigates the primary assumption violations—heteroscedasticity and non-normality—present in the original models.**
+
+In conclusion, while demographic variables explain only about a small amount of the variation in sodium consumption, we identified distinct, statistically significant patterns:
+
+- **Women consume significantly less sodium than men.**
+
+- **Older adults tend to consume less sodium than younger adults.**
+
+- **Higher Income groups and Non-Hispanic White or Asian populations are associated with significantly higher sodium intake.**
+
+These findings are crucial for public health, as they help identify exactly which groups are at higher risk for excessive sodium consumption.
