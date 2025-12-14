@@ -277,19 +277,14 @@ mutate(
   # Highest level of education
   # 1–5 -> labeled; 7 & 9 -> missing (NA)
   education = case_when(
-    education %in% 1:5 ~ education,
-    education %in% c(7, 9) ~ NA_real_
+    education %in% 1:3 ~ "HS/GED or less",
+    education == 4     ~ "Some College / AA",
+    education == 5     ~ "College+",
+    education %in% c(7, 9) ~ NA_character_
   ),
   education = factor(
     education,
-    levels = 1:5,
-    labels = c(
-      "< 9th grade",
-      "9–11th grade",
-      "HS graduate / GED",
-      "Some college / AA",
-      "College+"
-    )
+    levels = c("HS/GED or less", "Some College / AA", "College+")
   ),
   
   # Marital status
