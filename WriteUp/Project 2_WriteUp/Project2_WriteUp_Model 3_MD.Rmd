@@ -84,7 +84,7 @@ prop.table(table(food$healthy_diet))
 
 # 2. Recoding Demographic Variables
 
-To simplify interpretation and avoid sparse categories, I regroup marital status and race variables into broader, more balanced groups. Hispanic respondents are combined into a single category, and marital status is collapsed into partnered, widowed/separated, and single.
+To simplify interpretation and avoid sparse categories, we regroup marital status and race variables into broader, more balanced groups. Hispanic respondents are combined into a single category, and marital status is collapsed into partnered, widowed/separated, and single.
 
 ```{r}
 # Recode marital status
@@ -139,7 +139,7 @@ model_data <- food %>%
 
 # 4. Stepwise Logistic Regression and ANOVA Comparison
 
-We estimate a series of nested logistic regression models and compare them using likelihood-ratio tests. Education significantly improves model fit, income does not add explanatory power once gender-adjusted thresholds are used, race improves the model modestly, and marital status does not significantly improve fit.
+We estimate a series of nested logistic regression models and compare them using likelihood ratio tests. Education significantly improves model fit, income does not add explanatory power once gender-adjusted thresholds are used, race improves the model modestly, and marital status does not significantly improve fit.
 
 ```{r}
 # Model A: age + gender
@@ -176,7 +176,6 @@ anova(model_D, model_E, test = "Chisq")
 # 5. Final Model Selection
 
 Using a 0.5 cutoff, the model achieves relatively high accuracy (~76%) but extremely low sensitivity. This reflects the strong class imbalance and indicates that demographic variables alone are poor predictors of healthy diet status.
-
 
 
 ```{r}
