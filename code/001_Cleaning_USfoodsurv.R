@@ -32,7 +32,7 @@ rm(demographics)
 day1_foods = read_xpt("raw_data/DR1IFF_L.xpt")
 str(day1_foods)
 # Keep only the variables we need
-day1_foods_f=day1_foods[c("SEQN", "WTDRD1", "DR1DAY", "DR1CCMNM", "DR1CCMTX", "DR1_020", "DR1_030Z", "DR1FS", "DR1IFDCD", "DR1IGRMS", "DR1IKCAL", "DR1IPROT", "DR1ICARB", "DR1ISUGR", "DR1IFIBE", "DR1ITFAT", "DR1ISODI")]
+day1_foods_f=day1_foods[c("SEQN", "WTDRD1", "DR1DAY", "DR1CCMNM", "DR1CCMTX", "DR1_020", "DR1_030Z", "DR1FS", "DR1IFDCD", "DR1IGRMS", "DR1IKCAL", "DR1IPROT", "DR1ICARB", "DR1ISUGR", "DR1IFIBE", "DR1ITFAT", "DR1ISODI", "DMDHREDZ")]
 
 #Review food descriptions
 food_desc = read_xpt("raw_data/drxfcd_L.xpt")
