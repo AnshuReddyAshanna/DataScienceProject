@@ -1,0 +1,257 @@
+---
+title: "Project2_WriteUp_Model 3 Logisitical Regression"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_knit$set(
+  root.dir = "/Users/marlon/Documents/EDUCATION/GWU/GWU Courses/GWU Fall 25/Introduction to Data Science_Darcy Morris/ModelDataWhatWeEat"
+)
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+
+
+```
+
+### Model 3: Logistic Regression – Predicting a Healthy Diet
+```{r}
+# Load required libraries
+library(arrow)
+library(ggplot2)
+library(ezids)
+library(labelled)
+library(gtsummary)
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(vctrs)
+library(tibble)
+
+# Set working directory (adjust if needed)
+getwd()
+
+food = read_parquet("proc_data/demo_foods.parquet")
+
+
+
+# Quick inspection of the data
+head(food)
+names(food)
+```
+
+# 1. Constructing the Healthy Diet Score (Gender-Specific)
+
+We construct a healthy diet score ranging from 0–7, where each point corresponds to meeting one NIH dietary benchmark. Because recommended intake differs by gender, we apply gender-specific thresholds for calories, protein, fiber, and carbohydrates. A binary outcome variable (healthy_diet) is then created, where 1 indicates meeting at least 5 of the 7 criteria. Roughly 24% of respondents meet this threshold, indicating a class imbalance.
+```{r}
+# Create a gender-specific healthy diet score based on NIH benchmarks
+food <- food %>%
+  mutate(
+    healthy_score = case_when(
+      # Female thresholds (RIAGENDR == 2)
+      RIAGENDR == 2 ~ (
+        (DR1IKCAL_sum <= 2000) +
+        (DR1ISODI_sum < 2300) +
+        (DR1IPROT_sum >= 50) +
+        (DR1ISUGR_sum <= 50) +
+        (DR1ICARB_sum <= 275) +
+        (DR1IFIBE_sum >= 28) +
+        (DR1ITFAT_sum <= 78)
+      ),
+      # Male thresholds (RIAGENDR == 1)
+      RIAGENDR == 1 ~ (
+        (DR1IKCAL_sum <= 2500) +
+        (DR1ISODI_sum < 2300) +
+        (DR1IPROT_sum >= 56) +
+        (DR1ISUGR_sum <= 50) +
+        (DR1ICARB_sum <= 300) +
+        (DR1IFIBE_sum >= 31) +
+        (DR1ITFAT_sum <= 88)
+      )
+    ),
+    # Healthy if meeting at least 5 out of 7 criteria
+    healthy_diet = if_else(healthy_score >= 5, 1, 0)
+  )
+
+# Distribution of healthy vs unhealthy
+table(food$healthy_diet)
+prop.table(table(food$healthy_diet))
+```
+
+
+
+# 2. Recoding Demographic Variables
+
+To simplify interpretation and avoid sparse categories, I regroup marital status and race variables into broader, more balanced groups. Hispanic respondents are combined into a single category, and marital status is collapsed into partnered, widowed/separated, and single.
+
+```{r}
+# Recode marital status
+food <- food %>%
+  mutate(
+    marital_recode = case_when(
+      DMDMARTZ %in% c(1, 6) ~ "Partnered",
+      DMDMARTZ %in% c(2, 4) ~ "Wid/Separated",
+      TRUE ~ "Single"
+    )
+  )
+
+# Recode race/ethnicity
+food <- food %>%
+  mutate(
+    race_recode = case_when(
+      RIDRETH3 %in% c(1, 2) ~ "Hispanic",
+      RIDRETH3 == 3 ~ "White",
+      RIDRETH3 == 4 ~ "Black",
+      TRUE ~ "Other"
+    )
+  )
+```
+
+
+# 3. Preparing the Modeling Dataset
+
+Here we prepare the final modeling dataset by converting categorical variables to factors and removing observations with missing values. The final dataset includes demographic predictors commonly used in diet research.
+
+```{r}
+# Convert categorical variables to factors
+food$healthy_diet   <- factor(food$healthy_diet)
+food$RIAGENDR       <- factor(food$RIAGENDR)
+food$race_recode    <- factor(food$race_recode)
+food$marital_recode <- factor(food$marital_recode)
+food$DMDEDUC2       <- factor(food$DMDEDUC2)
+
+# Select variables for modeling
+model_data <- food %>%
+  select(
+    healthy_diet,
+    RIAGENDR,
+    RIDAGEYR,
+    race_recode,
+    marital_recode,
+    DMDEDUC2,
+    INDFMPIR
+  ) %>%
+  drop_na()
+```
+
+
+# 4. Stepwise Logistic Regression and ANOVA Comparison
+
+We estimate a series of nested logistic regression models and compare them using likelihood-ratio tests. Education significantly improves model fit, income does not add explanatory power once gender-adjusted thresholds are used, race improves the model modestly, and marital status does not significantly improve fit.
+
+```{r}
+# Model A: age + gender
+model_A <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR,
+               data = model_data, family = binomial)
+
+# Model B: add education
+model_B <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR + DMDEDUC2,
+               data = model_data, family = binomial)
+
+anova(model_A, model_B, test = "Chisq")
+
+# Model C: add income
+model_C <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR + DMDEDUC2 + INDFMPIR,
+               data = model_data, family = binomial)
+
+anova(model_B, model_C, test = "Chisq")
+
+# Model D: add race
+model_D <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR + DMDEDUC2 +
+                 INDFMPIR + race_recode,
+               data = model_data, family = binomial)
+
+anova(model_C, model_D, test = "Chisq")
+
+# Model E: add marital status
+model_E <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR + DMDEDUC2 +
+                 INDFMPIR + race_recode + marital_recode,
+               data = model_data, family = binomial)
+
+anova(model_D, model_E, test = "Chisq")
+```
+
+# 5. Final Model Selection
+
+Using a 0.5 cutoff, the model achieves relatively high accuracy (~76%) but extremely low sensitivity. This reflects the strong class imbalance and indicates that demographic variables alone are poor predictors of healthy diet status.
+
+
+
+```{r}
+model3 <- model_D
+# Predicted probabilities
+pred_prob3 <- predict(model3, type = "response")
+
+# Classification using 0.5 cutoff
+pred_class3 <- if_else(pred_prob3 >= 0.5, 1, 0)
+
+# Confusion matrix
+conf_mat3 <- table(pred_class3, model_data$healthy_diet)
+conf_mat3
+
+# Performance metrics
+cutoff <- 0.5
+TN <- conf_mat3["0","0"]
+FP <- conf_mat3["1","0"]
+FN <- conf_mat3["0","1"]
+TP <- conf_mat3["1","1"]
+
+metrics <- list(
+  Cutoff_used = cutoff,
+  Accuracy = (TP + TN) / (TP + TN + FP + FN),
+  Sensitivity = TP / (TP + FN),
+  Specificity = TN / (TN + FP),
+  Precision = TP / (TP + FP)
+)
+
+metrics
+```
+
+
+# 7. Visualizations
+
+The visualizations highlight the distribution of diet scores by gender and confirm that the model performs only slightly better than random guessing (AUC ≈ 0.60), reinforcing the conclusion that demographics alone cannot strongly predict diet quality.
+
+```{r}
+# Distribution of healthy diet scores by gender
+ggplot(food, aes(x = healthy_score, fill = RIAGENDR)) +
+  geom_histogram(position = "dodge", bins = 7, alpha = 0.85) +
+  scale_fill_manual(values = c("#1f78b4", "#e31a1c"),
+                    labels = c("Male", "Female")) +
+  labs(
+    title = "Distribution of Healthy Diet Scores by Gender",
+    subtitle = "Scores represent number of NIH benchmarks met",
+    x = "Healthy Diet Score",
+    y = "Count",
+    fill = "Gender"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+```{r}
+library(pROC)
+roc_obj <- roc(model_data$healthy_diet, pred_prob3)
+
+ggplot(data.frame(
+  tpr = roc_obj$sensitivities,
+  fpr = 1 - roc_obj$specificities),
+  aes(x = fpr, y = tpr)) +
+  geom_line(color = "#1f78b4", linewidth = 1.2) +
+  geom_abline(linetype = "dashed", color = "grey50") +
+  labs(
+    title = "ROC Curve for Healthy Diet Model",
+    subtitle = paste("AUC =", round(auc(roc_obj), 3)),
+    x = "False Positive Rate",
+    y = "True Positive Rate"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+
+Overall, the goal was to predict whether someone meets a gender-adjusted healthy diet definition (at least 5 out of 7 NIH-style benchmarks) using demographics. Stepwise ANOVA suggests education improves model fit and race adds a small improvement, while income and marital status do not add much once the scoring is gender-adjusted. Model performance is limited (AUC ≈ 0.60), and with a 0.5 cutoff it predicts almost everyone as “unhealthy,” so accuracy is driven mostly by class imbalance rather than strong prediction. In other words, the model is better for describing broad trends than for accurately predicting healthy diet status for individuals, and it suggests most people do not meet the NIH benchmarks.
+
+
+
+
