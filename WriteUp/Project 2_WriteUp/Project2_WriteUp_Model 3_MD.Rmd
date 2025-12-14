@@ -45,6 +45,7 @@ names(food)
 # 1. Constructing the Healthy Diet Score (Gender-Specific)
 
 We construct a healthy diet score ranging from 0–7, where each point corresponds to meeting one NIH dietary benchmark. Because recommended intake differs by gender, we apply gender-specific thresholds for calories, protein, fiber, and carbohydrates. A binary outcome variable (healthy_diet) is then created, where 1 indicates meeting at least 5 of the 7 criteria. Roughly 24% of respondents meet this threshold, indicating a class imbalance.
+
 ```{r}
 # Create a gender-specific healthy diet score based on NIH benchmarks
 food <- food %>%
@@ -175,7 +176,8 @@ anova(model_D, model_E, test = "Chisq")
 
 # 5. Final Model Selection
 
-Using a 0.5 cutoff, the model achieves relatively high accuracy (~76%) but extremely low sensitivity. This reflects the strong class imbalance and indicates that demographic variables alone are poor predictors of healthy diet status.
+Following the ANOVA evaluation, we identify model D as the best model. 
+Using a 0.5 cutoff, model D achieves relatively high accuracy (~76%) but extremely low sensitivity. This reflects the strong class imbalance (see above) and indicates that demographic variables alone are poor predictors of healthy diet status.
 
 
 ```{r}
