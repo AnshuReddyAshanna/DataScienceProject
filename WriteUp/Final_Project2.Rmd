@@ -111,7 +111,7 @@ Demographic information was obtained from NHANES demographic files and included:
 
 Following USDA recommendations, the analytic sample was restricted to adults aged 20 years and older to minimize bias from unequal age distributions across ethnic groups, as children’s food intake is inherently lower. Pregnant women were excluded because of their distinct nutritional requirements and dietary behaviors.
 
-To ensure national representativeness, NHANES provides dietary day one sample weights (WTDRD1), accounting for survey design, oversampling, and non response. However, the results reported in this report do not included this weights in the process. Nonetheless, we identified that the distribution of demographic groups matches what Consensus Economics reports for the U.S.
+To ensure national representativeness, NHANES provides dietary day one sample weights (WTDRD1), accounting for survey design, oversampling, and non response. We identified that the distribution of demographic groups matches what Consensus Economics reports for the U.S.
 
 After merging the dietary and demographic components, the final analytic sample consisted of 4,760 individuals and 36 variables, representing U.S. adults between August 2021 and August 2023.
 
