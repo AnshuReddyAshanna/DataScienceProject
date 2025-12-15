@@ -1626,7 +1626,7 @@ anova(model_D, model_E, test = "Chisq")
 
 ## Final Model Selection
 
-Using a 0.5 cutoff, the model achieves relatively high accuracy (~76%) but extremely low sensitivity. This reflects the strong class imbalance and indicates that demographic variables alone are poor predictors of healthy diet status.
+Using a 0.5 cutoff, the model achieves relatively high accuracy (~76%) but extremely low sensitivity. This reflects the strong class imbalance and indicates that demographic variables alone are poor predictors of healthy diet status. However, accuracyis not a good metric here; sensitivity/roc/auc matter more.
 
 
 ```{r}
