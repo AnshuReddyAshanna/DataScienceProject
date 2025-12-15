@@ -251,7 +251,9 @@ ggplot(data.frame(
 ```
 
 
-Overall, the goal was to predict whether someone meets a gender-adjusted healthy diet definition (at least 5 out of 7 NIH-style benchmarks) using demographics. Stepwise ANOVA suggests education improves model fit and race adds a small improvement, while income and marital status do not add much once the scoring is gender-adjusted. Model performance is limited (AUC ≈ 0.60), and with a 0.5 cutoff it predicts almost everyone as “unhealthy,” so accuracy is driven mostly by class imbalance rather than strong prediction. In other words, the model is better for describing broad trends than for accurately predicting healthy diet status for individuals, and it suggests most people do not meet the NIH benchmarks.
+Overall, the goal was to predict whether someone meets a gender-adjusted healthy diet definition (at least 5 out of 7 NIH-style benchmarks) using demographics. Stepwise ANOVA suggests education improves model fit and race adds a small improvement, while income and marital status do not add much once the scoring is gender-adjusted. Model performance is limited (AUC ≈ 0.60), and with a 0.5 cutoff it predicts almost everyone as “unhealthy,” so accuracy is driven mostly by class imbalance rather than strong prediction. Although the model captures broad demographic trends, it performs poorly at individual-level prediction, reflecting both class imbalance and the limits of demographics alone. Overall, the results clearly show that most Americans do not meet NIH nutritional benchmarks.
+
+
 
 
 
