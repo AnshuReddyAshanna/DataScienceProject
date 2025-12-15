@@ -1,5 +1,5 @@
 ---
-title: "Determinants of a Healthy Diet of U.S. adults 2021-2021"
+title: "Determinants of a Healthy Diet of U.S. adults 2021-2023"
 author: "Team-1: Ingri Quevedo, Anshu Reddy Ashanna, Marlon Demandt"
 date: "2025-12-14"
 output:
