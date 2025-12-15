@@ -1,0 +1,1726 @@
+---
+title: "Determinants of a Healthy Diet of U.S. adults 2021-2021"
+author: "Team-1: Ingri Quevedo, Anshu Reddy Ashanna, Marlon Demandt"
+date: "2025-12-14"
+output:
+   rmdformats::readthedown:
+     code_folding: hide
+     number_sections: true
+     toc_depth: 3
+     toc_float: yes
+bibliography: references.bib
+csl: apa-5th-edition.csl     
+editor_options: 
+  chunk_output_type: inline
+---
+```{r init, include=F}
+library(arrow)
+library(broom)
+library(caret)
+library(car)
+library(corrplot)
+library(data.table)
+library(dplyr)
+library(ezids)
+library(ggplot2)
+library(ggthemr)
+library(ggthemes)
+library(grid)
+library(gridExtra)
+library(gtsummary)
+library(Hmisc)
+library(knitr)
+library(labelled)
+library(lattice)
+library(leaps)
+library(modelr)
+library(MuMIn)
+library(openxlsx)
+library(patchwork)
+library(ROCR)
+library(scales)
+library(survey)
+library(tibble)
+library(tidyr)
+library(tidyverse)
+library(tidymodels)
+library(treemapify)
+library(vctrs)
+library(wCorr)
+library(iterators)
+library(foreach)
+library(shape)
+library(glmnet)
+library(grpreg)
+library(pls)
+library(glmnet)
+library(performance)
+library(see)
+library(RColorBrewer)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup")
+options(scientific=T, digits = 3) 
+
+# Set the root directory for all code chunks (important for reading files)
+#knitr::opts_knit$set(root.dir = "/Users/akashreddyashanna/Desktop/Fall 2025/Intro to DS/DataScienceProject")
+knitr::opts_knit$set(root.dir = "..")
+```
+
+```{r readDB}
+#### Reading the parquet file
+food <- read_parquet("proc_data/food_final_morevars.parquet")
+```
+
+
+# Introduction
+
+The COVID-19 pandemic and subsequent geopolitical conflicts have profoundly disrupted daily life around the world, reshaping economic conditions, social behavior, and food systems. Among the most consequential—and least evenly distributed—effects of these shocks have been changes in how people access, prepare, and consume food [@pandey_impact_2023]. Lockdowns, supply chain disruptions, and sharp increases in food prices altered not only what foods were available, but also which dietary choices were feasible for different populations.
+
+Existing research suggests that these disruptions generated mixed and often contradictory effects on dietary behavior. On the one hand, pandemic-related restrictions increased time spent at home, encouraging home cooking and, for some households, greater consumption of fruits and vegetables [@brownu_covid-19_25]. On the other hand, rising prices of nutritious foods and shortages of key staples reduced access to healthy options, particularly relative to ultra-processed, high-sugar, and high-sodium foods [@lewis_healthy_2023]. Geopolitical shocks—most notably disruptions to global grain supplies following the Russian invasion of Ukraine—further intensified pressures on food affordability and availability, compounding vulnerabilities in already strained food systems.
+
+These developments raise important questions about how dietary intake and overall diet quality vary across demographic groups and behavioral contexts during periods of heightened economic and social stress. In particular, understanding who is most at risk of excessive sugar and sodium consumption—and who is able to maintain a healthy diet despite these challenges—is central to designing effective public health interventions. Yet much of the existing literature focuses on single nutrients or broad dietary indices in isolation, limiting insight into how different dimensions of diet respond to shared structural constraints.
+
+This paper jointly examines three interrelated aspects of diet: daily sugar intake, daily sodium intake, and the likelihood of meeting established nutritional benchmarks for a healthy diet. By analyzing these outcomes together, we provide a more comprehensive view of dietary behavior that distinguishes between nutrient-specific consumption patterns and overall diet quality.
+
+Methodologically, we employ linear regression models to analyze sugar and sodium intake, using log-transformed measures to capture proportional differences in consumption across individuals. To assess diet quality, we estimate a logistic regression model that evaluates the probability of meeting gender-adjusted NIH dietary benchmarks, allowing for meaningful comparisons across individuals with differing nutritional requirements. Across all models, we incorporate a common set of demographic and behavioral covariates to ensure comparability and to highlight where determinants of diet overlap or diverge across outcomes.
+
+By situating nutrient intake and diet quality within the broader context of recent global shocks, this study aims to deepen understanding of the structural and behavioral drivers of dietary risk. In doing so, it offers insights relevant for public health policy at a time when food systems face ongoing volatility and when improving diet quality remains a critical, yet unevenly achieved, public health goal.
+
+# Data
+**What We Eat in America Dietary Data? National Health and Nutrition Examination Survey (NHANES) August 2021-August 2023**
+
+The “What We Eat in America” (WWEIA) dietary data, collected between August 2021 and August 2023, form part of the National Health and Nutrition Examination Survey (NHANES) conducted by the U.S. Centers for Disease Control and Prevention (CDC) in collaboration with the U.S. Department of Agriculture (USDA). This dataset provides nationally representative information on the types and quantities of foods and beverages consumed by individuals in the United States.[@u.s._department_of_agriculture_agricultural_research_service_what_2024]
+
+Data were collected through telephone-administered 24-hour dietary recalls using the USDA’s 5-Step Automated Multiple-Pass Method (AMPM), a structured interview protocol designed to enhance accuracy and reduce underreporting. Each participant completed up to two dietary recalls, in which they reported all foods, beverages (including water), and supplements consumed from midnight to midnight on the previous day. [@williams_what_2025]
+
+Nutrient values were derived from the USDA Food and Nutrient Database for Dietary Studies (FNDDS), which provides standardized nutrient composition data for thousands of food items. The 2021–2023 WWEIA cycle was based on an updated survey design and modified questionnaires introduced after the COVID-19 pandemic to reflect changes in food consumption patterns and supply chains.
+
+The following dietary variables were included in the analysis:
+Individual ID, USDA 8-digit food code, **Energy (kcal)**, **Protein (g)**, **Carbohydrates (g)**, **Total Sugars (g)**, **Dietary Fiber (g)**, **Total Fat (g)**, and **Sodium (mg)**.
+
+To generate individual-level daily consumption data, all foods reported under the USDA 8-digit codes were aggregated by summing nutrient quantities per individual. This approach provides the total daily nutrient intake per participant, allowing for direct comparisons across individuals and demographic groups. Aggregation by total intake—rather than mean or per-meal intake—was chosen to capture complete daily nutritional exposure, consistent with standard NHANES analytical practices. Future analyses could disaggregate these data by food category (e.g., cereals or processed foods) to examine the consumption of items most affected by recent price increases.
+
+Demographic information was obtained from NHANES demographic files and included:
+**Individual ID**, **Gender**, **Age**, **Race/Hispanic origin (including Non-Hispanic Asian)**, **Education level (adults 20+)**, **Marital status**, **Household size**, and **Family income-to-poverty ratio**.
+
+Following USDA recommendations, the analytic sample was restricted to adults aged 20 years and older to minimize bias from unequal age distributions across ethnic groups, as children’s food intake is inherently lower. Pregnant women were excluded because of their distinct nutritional requirements and dietary behaviors.
+
+To ensure national representativeness, NHANES provides dietary day one sample weights (WTDRD1), accounting for survey design, oversampling, and non response. However, the results reported in this report do not included this weights in the process. Nonetheless, we identified that the distribution of demographic groups matches what Consensus Economics reports for the U.S.
+
+After merging the dietary and demographic components, the final analytic sample consisted of 4,760 individuals and 36 variables, representing U.S. adults between August 2021 and August 2023.
+
+While the WWEIA-NHANES data provide a robust and nationally representative source for dietary assessment, several limitations should be acknowledged. First, the 24-hour dietary recall method relies on self-reported information, which is subject to recall bias and under reporting or over reporting, particularly for foods perceived as unhealthy. Second, each participant’s recall represents only one or two days of intake, which may not fully capture habitual dietary patterns or seasonal variations. Third, the use of aggregated nutrient totals does not account for meal timing or contextual factors, such as eating location or preparation method. Finally, subgroup analyses, such as by ethnicity or income, may still be affected by smaller sample sizes and sampling variability.
+
+Despite these limitations, WWEIA-NHANES remains one of the most comprehensive and reliable datasets for examining dietary intake and its relationship to demographic and socioeconomic characteristics in the U.S. population.
+
+# Model 1: Demographic Determinants of Sugar intake
+
+## Distribution of sugar
+
+The following graph shows the distribution of daily sugar intake in grams across the sample, constructed using representative survey weights. The distribution is strongly right-skewed: most individuals consume between 50 and 150 grams of sugar per day,7 while a small fraction report extremely high intakes, with values approaching 1,000 grams within a 24-hour period.
+
+```{r sugardist}
+survey_design <- svydesign(ids = ~1,weights = ~weight, data = food)
+m_sugar  <- with(food, weighted.mean(sugar, weight, na.rm = TRUE))
+sd_sugar <- with(food, {
+  mu <- weighted.mean(sugar, weight, na.rm = TRUE)
+  sqrt(weighted.mean((sugar - mu)^2, weight, na.rm = TRUE))
+})
+
+#Graph
+ggplot(food, aes(x = sugar)) +
+  geom_histogram(
+    aes(
+      y      = after_stat(density),
+      weight = weight
+    ),
+    bins  = 30,
+    alpha = 0.5,
+    color = "#4DBBD5",
+    fill  = "#4DBBD5"
+  ) +
+  geom_density(
+    aes(weight = weight),
+    color = "#00A087",
+    size  = 1.2,
+    alpha = 0.3,
+    na.rm = TRUE
+  ) +
+  stat_function(
+    fun  = dnorm,
+    args = list(
+      mean = m_sugar,
+      sd   = sd_sugar
+    ),
+    color    = "#E64B35",
+    size     = 1,
+    linetype = "dashed"
+  ) +
+  labs(
+    title    = "Distribution of Sugar Intake",
+    subtitle = "Histogram with density curve and normal distribution overlay",
+    x        = "Sugar intake (g)",
+    y        = "Density",
+    caption  = "Note: Orange red dashed line represents the weighted normal distribution.\nCalculations using survey weights."
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.caption   = element_text(hjust = 0),
+    legend.position = "bottom",
+    strip.text      = element_text(face = "bold")
+  )
+```
+
+To address this skewness, sugar intake is log-transformed, yielding a distribution that is more symmetric and closer to normal. However, because the logarithmic transformation compresses large values more strongly than small values, the transformation induces negative skewness in the presence of extreme upper-tail observations. As a result, the transformed variable departs from a symmetric Gaussian distribution, with a pronounced left tail.
+
+```{r sugardist2}
+#No missing in log sugar
+df <- subset(food, is.finite(log_sugar) & !is.na(log_sugar))
+survey_design <- svydesign(ids = ~1,weights = ~weight, data = food)
+
+##### Distribution of Log of Sugar
+## Weighted mean and sd for log_sugar
+m_logsugar  <- with(df, weighted.mean(log_sugar, weight, na.rm = TRUE))
+sd_logsugar <- with(df, {
+  mu <- weighted.mean(log_sugar, weight, na.rm = TRUE)
+  sqrt(weighted.mean((log_sugar - mu)^2, weight, na.rm = TRUE))
+})
+
+#Graph
+ggplot(df, aes(x = log_sugar)) +
+  geom_histogram(
+    aes(
+      y      = after_stat(density),
+      weight = weight
+    ),
+    bins  = 30,
+    alpha = 0.5,
+    color = "#4DBBD5",
+    fill  = "#4DBBD5"
+  ) +
+  geom_density(
+    aes(weight = weight),
+    color = "#00A087",
+    size  = 1.2,
+    alpha = 0.3,
+    na.rm = TRUE
+  ) +
+  stat_function(
+    fun  = dnorm,
+    args = list(
+      mean = m_logsugar,
+      sd   = sd_logsugar
+    ),
+    color    = "#E64B35",
+    size     = 1,
+    linetype = "dashed"
+  ) +
+  labs(
+    title    = "Distribution of Log Sugar Intake",
+    subtitle = "Histogram with density curve and normal distribution overlay",
+    x        = "Logarithm Sugar intake (g)",
+    y        = "Density",
+    caption  = "Note: Orange red dashed line represents the weighted normal distribution.\nCalculations using survey weights."
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.caption   = element_text(hjust = 0),
+    legend.position = "bottom",
+    strip.text      = element_text(face = "bold")
+  )
+```
+
+### Sugar Outliers
+
+```{r sugaroutliers1}
+### Outliers Log-Sugar
+food_f = outlierKD2(df, log_sugar, rm = TRUE, boxplt = TRUE, qqplt = TRUE)
+```
+
+Achieving approximate normality would require excluding extreme observations, which would result in the removal of 3.5 percent of the sample. Importantly, excluding these observations would increase the mean level of sugar consumption, as average intake among the remaining sample is higher than in the full sample.
+
+```{r sugaroutliers2}
+cat_plot_data <- food_f %>%
+  mutate(sugar_missing = is.na(log_sugar)) %>%
+  pivot_longer(cols = c(gender, race),
+               names_to = "variable",
+               values_to = "category") %>%
+  group_by(variable, category) %>%
+  summarise(prop_missing = mean(sugar_missing), .groups = "drop")
+
+cat_plot_data %>%
+  mutate(category = str_to_title(category)) %>%
+  ggplot(aes(x = category, y = prop_missing)) +
+  geom_col(fill = "#4DBBD5", alpha=0.7) + 
+  facet_wrap(~ variable, scales = "free_x") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = NULL,
+    y = "Proportion Missing",
+    title = "Proportion of Log Sugar Missing by Category"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 20, hjust = 1),
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+
+num_plot_data <- food_f %>%
+  mutate(sugar_missing = ifelse(is.na(log_sugar), "Sugar missing", "Sugar not missing")) %>%
+  pivot_longer(cols = c(age, incomepovline),
+               names_to = "variable",
+               values_to = "value") %>%
+  group_by(variable, sugar_missing) %>%
+  summarise(mean_value = mean(value, na.rm = TRUE), .groups = "drop")
+
+ggplot(num_plot_data,
+          aes(x = sugar_missing, y = mean_value, fill = sugar_missing)) +
+  geom_col(alpha=0.7) +
+  facet_wrap(~ variable, scales = "free_y") +
+  labs(
+    x = "Sugar missing status",
+    y = "Mean value",
+    title = "Mean of Numeric Variables by Sugar Missing Status"
+  ) +
+  guides(fill = "none") +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(hjust = 1),
+    plot.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+```
+
+Examination of the data indicates that these extreme observations are not randomly distributed. The excluded observations are disproportionately male, more likely to belong to racial and ethnic groups that are already underrepresented in the sample—particularly Hispanic, Black, and multiracial individuals—and are characterized by lower average age and income. Dropping these observations would therefore alter the demographic composition of the sample and reduce representativeness.
+
+This presents a key modeling trade-off. Retaining the full sample implies using a dependent variable that does not fully satisfy the normality assumption underlying classical linear regression, potentially reducing efficiency and inflating standard errors. For this reason, we further examine the relationship between extreme sugar intake and demographic characteristics to assess whether these observations can be plausibly treated as random noise or whether their exclusion would introduce systematic bias.
+
+## Independent Variables
+
+This section examines the bivariate relationships between daily sugar consumption and key independent variables.
+
+```{r}
+##### Scatterplot of Sugar and Number of Snacks
+ct <- cor.test(df$numsnacks, df$log_sugar, use = "complete.obs")
+r_val <- unname(ct$estimate)   # Pearson r
+p_val <- ct$p.value            # p-value
+lab_text <- paste0("r = ", round(r_val, 3), "\n p = ", signif(p_val, 3))
+
+ggplot(df, aes(x = numsnacks, y = log_sugar)) +
+  geom_point(color = "#4DBBD5", alpha = 0.5, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 1, color = "#E64B35") +
+  annotate(
+    "text", x = Inf, y = 0, hjust  = 1.1, vjust  = 1.5, label  = lab_text, size   = 5
+  ) +
+  labs(
+    title = "Sugar Intake vs. Number of snacks",
+    x = "Number of Snacks",
+    y = "Log Sugar Intake (gm)"
+  ) +
+  theme_minimal(base_size = 18) +
+  theme(
+    plot.title = element_text( hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(margin = margin(t = 8)),
+    axis.title.y = element_text(margin = margin(r = 8))
+  )
+
+```
+
+Sugar intake is positively associated with the number of snacks consumed during the 24-hour dietary recall period. The Pearson correlation coefficient is `r r_val`, with a p-value of `r p_val`, allowing rejection of the null hypothesis of no linear association. This result suggests a statistically significant and non-random relationship between snack frequency and sugar intake.
+
+```{r}
+##### Scatterplot of Sugar and Number of Meals at Home
+ct <- cor.test(df$numhomemeals, df$log_sugar, use = "complete.obs")
+r_val <- unname(ct$estimate)   # Pearson r
+p_val <- ct$p.value            # p-value
+lab_text <- paste0("r = ", round(r_val, 3), "\n p = ", signif(p_val, 3))
+
+ggplot(df, aes(x = numhomemeals, y = log_sugar)) +
+  geom_point(color = "#4DBBD5", alpha = 0.5, size  = 2) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 1, color = "#E64B35") +
+  annotate(
+    "text", x = Inf, y = 0, hjust  = 1.1, vjust  = 1.5, label  = lab_text, size   = 5
+  ) +
+  labs(
+    title = "Sugar Intake vs. Number of Meals at Home",
+    x     = "Number of of Meals at Home", 
+    y     = "Log Sugar Intake (gm)") +
+  theme_minimal(base_size = 18) +
+  theme(
+    plot.title   = element_text(hjust = 0.5,face  = "bold",size  = 14),
+    axis.title.x = element_text(margin = margin(t = 8)),
+    axis.title.y = element_text(margin = margin(r = 8))
+  )
+```
+
+A positive association is also observed between sugar consumption and the number of meals consumed at home. The Pearson correlation coefficient is `r r_val`, with a p-value of `r p_val`, indicating a statistically significant relationship. Although this finding contrasts with prior evidence linking home-prepared meals to healthier diets (Brown 2024), it may reflect a scale effect: individuals consuming more meals overall may also consume greater quantities of all nutrients, including sugar.
+
+
+```{r}
+##### Scatterplot of Sugar and Age
+ct <- cor.test(df$age, df$log_sugar, use = "complete.obs")
+r_val <- unname(ct$estimate)   # Pearson r
+p_val <- ct$p.value            # p-value
+lab_text <- paste0("r = ", round(r_val, 3), "\n p = ", signif(p_val, 3))
+
+ggplot(df, aes(x = age, y = log_sugar)) +
+  geom_point(color = "#4DBBD5", alpha = 0.5, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 1, color = "#E64B35") +
+  annotate(
+    "text", x = Inf, y = 0, hjust  = 1.1, vjust  = 1.5, label  = lab_text, size   = 5
+  ) +  
+  labs(
+    title = "Sugar Intake vs. Age",
+    x = "Age",
+    y = "Log Sugar Intake (gm)"
+  ) +
+  theme_minimal(base_size = 18) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    axis.title.x = element_text(margin = margin(t = 8)),
+    axis.title.y = element_text(margin = margin(r = 8))
+  )
+```
+
+In contrast, age does not appear to be associated with sugar consumption. This is confirmed by a Pearson correlation coefficient of `r r_val` and a p-value of `r p_val`, failing to reject the null hypothesis of no linear relationship.
+
+```{r}
+my_colors <- c("<100"    = "#7AEBD1",
+               "100-200"      = "#27B291",
+               "200-300"      = "#12705A",
+               "300-400"      = "#124E70",
+               "400-500"      = "#277EB0",
+               "500+" = "#6FC2F2",
+               "NA" = "gray")
+
+
+# ---- Prepare data: weighted sugar + within-variable shares ----
+df_plot <- df %>%
+  group_by(income_pov_cat) %>%
+  summarise(
+    weighted_n     = sum(weight, na.rm = TRUE),
+    weighted_sugar = weighted.mean(sugar, weight, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    prop  = weighted_n / sum(weighted_n),      # share within each variable
+    share_label = percent(prop, accuracy = 0.1)
+  ) %>%
+  ungroup()
+scale_factor <- max(df_plot$weighted_sugar, na.rm = TRUE) / 
+  max(df_plot$prop,           na.rm = TRUE)
+
+df_plot <- df_plot %>%
+  mutate(prop_scaled = prop * scale_factor)
+
+# ---- Plot: ----
+ggplot(df_plot, aes(x = income_pov_cat)) +
+  geom_col(aes(y = weighted_sugar, fill = income_pov_cat, alpha = 0.4)) +
+  geom_point(aes(y = prop_scaled), size = 3, color = "black") +
+  geom_text(aes(y = prop_scaled, label = share_label),
+            vjust = -0.7, size = 3.5) +
+  scale_fill_manual(values = my_colors) +
+  scale_y_continuous(
+    name = "Average sugar consumption (grams)",
+    expand = expansion(mult = c(0, 0.1)),
+    sec.axis = sec_axis(
+      ~ . / scale_factor,
+      name = "Percentage of people in each category",
+      breaks = seq(0, 1, by = 0.05),   # every 5%
+      labels = percent_format()
+    )
+  ) +
+  
+  labs(
+    title = "Average Sugar Consumption and Sample Shares by Income",
+    caption = "Source:Author's calculations using WWEIA 2021-2023. \nNote: Calculations using survey weights.",
+    x = "",
+    fill = ""
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.caption = element_text(hjust = 0, size = 10, margin = margin(t = 10))
+  )
+```
+
+The previous figure presents average daily sugar consumption by income-to-poverty ratio category, reported in grams for ease of interpretation. Average sugar intake is relatively similar across income groups, at approximately 90 grams per day. The figure also displays the distribution of the sample across income categories. Approximately 10.6 percent of individuals live in households at or below 100 percent of the poverty line, while 29.6 percent fall between 100 and 300 percent—roughly corresponding to median household income in the United States. According to U.S. Census Bureau estimates, real median household income in 2024 was approximately $83,730, with an average household size of 3.15 persons, consistent with an income-to-poverty ratio near 300 percent. An additional 21.3 percent of the sample falls between 300 and 500 percent of the poverty line, and 26.3 percent resides in households at or above 500 percent.
+
+```{r}
+summary(aov(log_sugar ~ incomepovline, data=df))
+```
+
+Differences in average sugar consumption across income groups are small and statistically insignificant. An ANOVA test yields a p-value of 0.34, failing to reject the null hypothesis that mean sugar intake is equal across income categories.
+
+```{r}
+my_colors <- c("gender"    = "#4DBBD5",
+               "race"      = "#E64B35",
+               "education" = "#00A087")
+
+
+# ---- Prepare data: weighted sugar + within-variable shares ----
+df_plot <- food %>%
+  pivot_longer(
+    cols = c(gender, race, education),
+    names_to = "variable",
+    values_to = "category"
+  ) %>%
+  group_by(variable, category) %>%
+  summarise(
+    weighted_n     = sum(weight, na.rm = TRUE),
+    weighted_sugar = weighted.mean(sugar, weight, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(variable) %>%
+  mutate(
+    prop  = weighted_n / sum(weighted_n),      # share within each variable
+    share_label = percent(prop, accuracy = 0.1)
+  ) %>%
+  ungroup() %>%
+  mutate(full_cat = paste(variable, category, sep = ": "))
+
+# ---- Rescale share so dots can be plotted on sugar scale ----
+scale_factor <- max(df_plot$weighted_sugar, na.rm = TRUE) / 
+  max(df_plot$prop,           na.rm = TRUE)
+
+df_plot <- df_plot %>%
+  mutate(prop_scaled = prop * scale_factor)
+
+# ---- Plot----
+ggplot(df_plot, aes(x = category)) +
+  geom_col(aes(y = weighted_sugar, fill = variable, alpha = 0.4)) +
+  geom_point(aes(y = prop_scaled), size = 3, color = "black") +
+  geom_text(aes(y = prop_scaled, label = share_label),
+            vjust = -0.7, size = 3.5) +
+  scale_fill_manual(values = my_colors) +
+  scale_y_continuous(
+    name = "Average sugar consumption",
+    expand = expansion(mult = c(0, 0.1)),
+    sec.axis = sec_axis(
+      ~ . / scale_factor,
+      name   = "Share of people within each category",
+      labels = percent_format()
+    )
+  ) +
+  labs(
+    title = "Average Sugar Consumption and Category Shares (Weighted)",
+    x = "",
+    fill = ""
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+This figure shows average sugar consumption by gender, race and ethnicity, and educational attainment.
+
+```{r}
+summary(aov(log_sugar ~ gender, data=df))
+```
+
+Women, who comprise 52.4 percent of the sample, consume less sugar on average than men. This difference is statistically significant, with ANOVA results yielding a p-value below 2 × 10⁻¹⁶. 
+
+```{r}
+anova_result = aov(log_sugar ~ race, data=df)
+summary(anova_result)
+tukeyAoV <- TukeyHSD(anova_result)
+tukey_table <- tidy(tukeyAoV) %>%
+  rename(
+    Comparison = contrast,
+    Mean_Difference = estimate,
+    Lower_95CI = conf.low,
+    Upper_95CI = conf.high,
+    Adjusted_p = adj.p.value
+  ) %>%
+  mutate(Significance = ifelse(Adjusted_p < 0.05, "Significant", "Not Significant"))
+kable(
+  tukey_table,
+  caption = "Tukey HSD Post-hoc Test for Sugar Intake Across Ethnic Groups",
+  digits = 3,
+  align = "lccccc"
+)
+```
+
+Across racial and ethnic groups, Non-Hispanic White individuals—who represent 63.6 percent of the sample—exhibit the highest average sugar consumption. ANOVA results indicate that mean sugar intake differs across racial and ethnic groups, and Tukey’s HSD post-hoc tests show that Non-Hispanic White individuals consume significantly more sugar than Hispanic individuals, while differences among other groups are not statistically significant.
+
+```{r}
+summary(aov(log_sugar ~ education, data=df))
+```
+
+Average sugar consumption declines with higher levels of educational attainment. However, despite this monotonic pattern, ANOVA results indicate that differences in mean sugar intake across education categories are not statistically significant.
+
+
+```{r}
+my_colors <- c("timeus"    = "#4DBBD5",
+               "militar"      = "#E64B35",
+               "maritalstatus" = "#00A087")
+
+df_plot <- food %>%
+  pivot_longer(
+    cols = c(timeus, militar, maritalstatus),
+    names_to = "variable",
+    values_to = "category"
+  ) %>%
+  group_by(variable, category) %>%
+  summarise(
+    weighted_n     = sum(weight, na.rm = TRUE),
+    weighted_sugar = weighted.mean(sugar, weight, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(variable) %>%
+  mutate(
+    prop  = weighted_n / sum(weighted_n),      # share within each variable
+    share_label = percent(prop, accuracy = 0.1)
+  ) %>%
+  ungroup() %>%
+  mutate(full_cat = paste(variable, category, sep = ": "))
+
+# ---- Rescale share so dots can be plotted on sugar scale ----
+scale_factor <- max(df_plot$weighted_sugar, na.rm = TRUE) / 
+  max(df_plot$prop,           na.rm = TRUE)
+
+df_plot <- df_plot %>%
+  mutate(prop_scaled = prop * scale_factor)
+
+# ---- Plot----
+ggplot(df_plot, aes(x = category)) +
+  geom_col(aes(y = weighted_sugar, fill = variable, alpha = 0.4)) +
+  geom_point(aes(y = prop_scaled), size = 3, color = "black") +
+  geom_text(aes(y = prop_scaled, label = share_label),
+            vjust = -0.7, size = 3.5) +
+  scale_fill_manual(values = my_colors) +
+  scale_y_continuous(
+    name = "Average sugar consumption",
+    expand = expansion(mult = c(0, 0.1)),
+    sec.axis = sec_axis(
+      ~ . / scale_factor,
+      name   = "Share of people within each category",
+      labels = percent_format()
+    )
+  ) +
+  labs(
+    title = "Average Sugar Consumption and Category Shares (Weighted)",
+    x = "",
+    fill = ""
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+summary(aov(log_sugar ~ timeus, data=df))
+summary(aov(log_sugar ~ militar, data=df))
+summary(aov(log_sugar ~ maritalstatus, data=df))
+```
+
+The majority of the sample has resided in the United States for 20 years or more. While some variation in sugar consumption is observed among individuals with shorter durations of residence, these groups represent a relatively small share of the sample. ANOVA results indicate statistically significant differences in sugar consumption by time spent in the United States.
+
+Finally, individuals with military status report higher average sugar consumption than non-military respondents, and this difference is statistically significant. In contrast, average sugar consumption varies little across marital status categories, and ANOVA results fail to detect statistically significant differences.
+
+## Linear Model
+
+We estimate linear regression models to examine the relationship between sugar consumption and individual demographic characteristics. The dependent variable is the logarithm of daily sugar intake, which allows estimated coefficients to be interpreted as approximate percentage differences and mitigates the influence of extreme values in the upper tail of the distribution. The set of explanatory variables includes gender, educational attainment, race and ethnicity, age, income-to-poverty ratio, marital status, time residing in the United States, and military status. All specifications control for the number of snacks consumed, the number of meals prepared at home during the 24-hour recall period, and the day of the week on which the dietary survey was administered.
+
+The linear regression framework is chosen for its interpretability and its suitability for estimating conditional mean differences in sugar intake across demographic groups. Coefficients are estimated by ordinary least squares, and identification relies on within-sample variation in covariates after conditioning on the full set of controls.
+
+### Best Model ANOVA comparison
+
+To select a parsimonious specification, we adopt a stepwise model-building approach, sequentially adding covariates and evaluating improvements in model fit. We begin with a baseline specification that includes only the number of snacks and the number of home-prepared meals, which capture key behavioral determinants of sugar intake. Additional covariates are incorporated if their inclusion improves model performance based on residual diagnostics and overall fit.
+
+***Benchmark 1***
+$log(sugar)=\beta_{0}+\beta_{s}*\text{Number of Snakcs}_{i} +\beta_{m}*\text{Number of Meals at Home}_{i} + \epsilon_{i} $
+
+```{r}
+#Benchmark
+fit1 <- glm(log_sugar ~ numsnacks + numhomemeals, data = df)
+# + gender
+fit2 <- glm(log_sugar ~ numsnacks + numhomemeals + gender, data = df)
+#anova(fit1,fit2)
+# + education
+fit3 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education, data = df)
+#anova(fit1,fit2, fit3)
+# + age
+fit4 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education + age, data = df)
+#anova(fit1,fit2, fit3, fit4)
+# + age & age^2
+fit5 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education + age + I(age^2), data = df)
+anova(fit1,fit2, fit3, fit4, fit5)
+```
+
+The first set of demographic variables added includes gender and educational attainment. Both variables improve model fit and are retained. In contrast, age and a quadratic age term are not associated with improved model performance and are excluded, suggesting no meaningful linear or nonlinear relationship between age and sugar intake after accounting for other covariates.
+
+***Benchmark 2***
+$log(sugar)=\beta_{0}+\beta_{s}*\text{Number of Snakcs}_{i} +\beta_{m}*\text{Number of Meals at Home}_{i} +\beta_{g}*\text{Gender}_{i} +\beta_{e}*\text{Education}_{i} + \epsilon_{i} $
+
+
+```{r}
+### New Benchmark
+fit1 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education, data = df)
+#+race
+fit2 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education + race, data = df)
+#anova(fit1,fit2)
+#+timeus
+fit3 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education + race +timeus, data = df)
+#anova(fit1,fit2, fit3)
+#maritalstatus
+fit4 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education + race +timeus+maritalstatus, data = df)
+anova(fit1,fit2, fit3, fit4)
+```
+
+The updated benchmark model is then augmented with race and ethnicity, time residing in the United States, and marital status. Race and ethnicity and time in the United States improve the model and are retained, while marital status does not contribute to model fit. This result is consistent with earlier descriptive analyses showing minimal variation in sugar consumption across marital status categories.
+
+***Benchmark 2***
+$log(sugar)=\beta_{0}+\beta_{s}*\text{Number of Snakcs}_{i} +\beta_{m}*\text{Number of Meals at Home}_{i} +\beta_{g}*\text{Gender}_{i} +\beta_{e}*\text{Education}_{i} +\beta_{r}*\text{Race}_{i} +\beta_{tu}*\text{Time in the U.S.}_{i} + \epsilon_{i} $
+
+```{r}
+### New Benchmark
+fit1 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education + race +timeus, data = df)
+#+militar
+fit2 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education + race +timeus + militar, data = df)
+anova(fit1,fit2)
+```
+
+Next, we evaluate the inclusion of military status. Although earlier bivariate analyses indicated higher average sugar consumption among individuals with military status, the variable does not improve model fit once other demographic characteristics are included. This likely reflects both the imbalance in the distribution of military status and the fact that correlated covariates capture much of the observed variation.
+
+```{r}
+#+dayweek
+fit2 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education + race +timeus + dayweek, data = df)
+anova(fit1,fit2)
+```
+
+Controlling for the day of the week on which the dietary recall was collected does not improve model performance and is therefore excluded from the final specification. This result is somewhat unexpected, given expected variance in day-specific dietary patterns, suggesting low weekday–weekend variation in sugar intake once other factors are controlled for.
+
+```{r}
+#+income
+fit2 <- glm(log_sugar ~ numsnacks + numhomemeals + gender + education + race +timeus + income_pov_cat, data = df)
+tempf1=glm(log_sugar ~ numsnacks + numhomemeals + gender + education + race +timeus, data = df[!is.na(df$income_pov_cat), ])
+anova(tempf1,fit2)
+r.squaredGLMM(fit2)
+```
+
+Finally, we incorporate the income-to-poverty ratio. Although the improvement in model fit is modest, this variable is retained because it helps account for economic constraints related to food affordability and access. Including income-to-poverty ratio reduces the analytic sample size by 12.2 percent due to missing data; however, we view its inclusion as substantively important despite the associated loss of observations.
+
+***FINAL MODEL***
+$log(sugar)=\beta_{0}+\beta_{s}*\text{Number of Snakcs}_{i} +\beta_{m}*\text{Number of Meals at Home}_{i} +\beta_{g}*\text{Gender}_{i} +\beta_{e}*\text{Education}_{i} +\beta_{r}*\text{Race}_{i} +\beta_{tu}*\text{Time in the U.S.}_{i} +\beta_{inc}*\text{Income Pov Ratio}_{i} + \epsilon_{i} $
+
+
+### Best Model using LEAPS
+
+We tried 1–20 predictors; the best Adj R² is at k = 13. Although the subset selection procedure using categorical variables executes without error and returns a “best” model, the results are difficult to interpret substantively. The selected models vary widely in their combinations of predictors—most frequently involving race, education level, income, day of the week, gender, and time in the U.S.—yet no stable or coherent pattern emerges across model sizes. Moreover, the adjusted $R^2$ values fluctuate erratically, offering little guidance for principled model selection. This instability stems in part from the fact that the subset selection algorithm fits an unbounded linear model to the response, while many of the predictors are categorical indicators that take on only binary values (0 or 1). As a result, small changes in variable inclusion can produce disproportionate changes in fit statistics, leading to models that are statistically optimal but substantively implausible. Consequently, despite producing a numerical result, this approach excludes important contextual structure and sacrifices interpretability. For these reasons, we retain the model selected via ANOVA-based stepwise comparison, which—although modest in explanatory power—yields a more interpretable and stable solution with an $R^2$ of approximately 0.0997.
+
+```{r}
+dffilt=df[c("log_sugar","gender", "education", "race", "timeus",
+            "age", "income_pov_cat", "maritalstatus", "militar",
+            "numsnacks", "numhomemeals", "dayweek")]
+
+##### USE SUBSECT LEAPS
+subfit <- regsubsets(log_sugar ~ ., data = dffilt, nvmax = 20, method = "exhaustive")
+
+subsum <- summary(subfit)
+
+subsum$adjr2   # adjusted R^2
+#subsum$cp      # Mallows' Cp
+#subsum$bic     # BIC
+
+best_r2 <- which.max(subsum$adjr2)
+
+best_k <- which.max(subsum$adjr2)
+
+plot(subsum$adjr2, type = "b",
+     xlab = "Number of predictors",
+     ylab = "Adjusted R-squared")
+abline(v = best_k, lty = 2)
+points(best_k, subsum$adjr2[best_k], pch = 19)
+text(best_k, subsum$adjr2[best_k],
+     labels = paste0("Best k = ", best_k),
+     pos = 3)
+
+best_k <- which.max(subsum$adjr2)
+best_coefs <- coef(subfit, best_k)
+
+best_tbl <- data.frame(
+  term = names(best_coefs),
+  estimate = unname(best_coefs),
+  row.names = NULL
+)
+
+plot(subfit, scale = "adjr2")
+title("Best Subset Selection (scaled by Adjusted R²)")
+```
+
+### Best Model Using LASSO
+
+We use cv.glmnet() which performs K-fold cross-validation (default: 10-fold).
+For each value of $\lambda$, it fits a LASSO model and computes out-of-sample mean squared error (MSE).Using lambda.1se we get the largest $\lambda$ within one standard error of the minimum MSE and therefore favors a simpler and more stable model. Under this criterion, only the number of snacks, the number of meals consumed at home, and gender are retained in the model. While this approach improves parsimony and predictive stability, it may result in underfitting and reduced interpretability, as it excludes variables, such as race and education—that previously exhibited meaningful differences in sugar consumption across categories.
+
+```{r}
+dffilt2 <- dffilt
+names(dffilt2)[names(dffilt2) == "log_sugar"] <- "Y"
+Y <- dffilt2$Y
+
+dffilt2_complete <- na.omit(dffilt2[, c("Y","gender","education","race","maritalstatus",
+                                        "timeus","income_pov_cat","militar","dayweek",
+                                        "age","numsnacks","numhomemeals")])
+                                        
+dummies <- model.matrix(
+  ~ gender + education + race + maritalstatus + timeus + income_pov_cat + militar + dayweek,
+  data = dffilt2_complete
+)[, -1]
+
+dffilt_num <- data.frame(
+  Y = dffilt2_complete$Y,
+  dffilt2_complete[, c("timeus","age","numsnacks","numhomemeals")],
+  dummies
+)
+
+
+x <- model.matrix(Y ~ . , data = dffilt_num)[, -1]
+y <- dffilt_num$Y
+
+cv <- cv.glmnet(x, y, alpha = 1, family = "gaussian")
+coef(cv, s = "lambda.1se")
+```
+
+## Selected Model
+
+Using an ANOVA-based stepwise model selection approach, the final selected model is a linear regression of the logarithm of daily sugar intake on the number of snacks consumed, the number of home-prepared meals, gender, educational attainment, race and ethnicity, time residing in the United States, and the income-to-poverty ratio. This specification controls for key dietary behaviors and demographic characteristics that jointly explain variation in sugar consumption, while excluding variables that do not contribute to model fit.
+
+```{r}
+dffinal=df[!is.na(df$income_pov_cat), ]
+fitfinal=glm(log_sugar ~ numsnacks + numhomemeals + gender + education + race +timeus + income_pov_cat, data = dffinal)
+
+## Coefplot
+coef_df <- tidy(fitfinal, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(
+    # significance stars
+    sig = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01  ~ "**",
+      p.value < 0.05  ~ "*",
+      TRUE ~ ""
+    ),
+    coef_label = sprintf("%.3f%s", estimate, sig),
+    term = gsub("_", " ", term),
+    term = factor(term, levels = rev(unique(term)))
+  )
+
+ggplot(coef_df, aes(x = term, y = estimate)) +
+  geom_point(size = 3, color = "#4DBBD5", alpha=0.5) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = 0.2, color = "#4DBBD5", alpha=0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5, color="#E64B35") +
+  geom_text(aes(label = coef_label), vjust=-0.5,
+            hjust = 0, size = 3.5) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.title.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+```
+
+The results show that a higher number of snacks was significantly associated with greater sugar intake. Specifically, each additional snack was associated with an approximately 6.1% increase in sugar intake ($\beta_{s}$ = 0.059, p < 0.001), holding all other variables constant. Similarly, each additional home-prepared meal was associated with a 1.9% increase in sugar intake ($\beta_{m}$ = 0.019, p < 0.001).
+
+There are large gender differences in sugar intake, with females consuming significantly less sugar than males. Compared with males, females had an estimated 19.5% lower sugar intake ($\beta_{g}$ = −0.217, p < 0.001).
+
+Educational attainment was not significantly associated with sugar intake. Compared with individuals with a high school education or less, those with some college or an associate degree had an estimated 4.0% higher sugar intake ($\beta_{e}$ = 0.039, p = 0.201), while those with a college degree or higher had a 1.0% lower sugar intake ($\beta_{g}$ = −0.010, p = 0.759).
+
+With respect to race and ethnicity, Non-Hispanic White and Non-Hispanic Black individuals had significantly higher sugar intake compared with Hispanic individuals. Non-Hispanic White participants consumed approximately 9.9% more sugar ($\beta_{r}$ = 0.095, p = 0.007), while Non-Hispanic Black participants consumed approximately 11.7% more sugar ($\beta_{r}$ = 0.110, p = 0.017). No statistically significant differences were observed for Non-Hispanic Asian individuals or those identifying as other or multi-racial.
+
+Time residing in the United States was not significantly associated with sugar intake. Compared with individuals who had lived in the United States for less than five years, those residing for 5–15 years had an estimated 15.5% lower sugar intake ($\beta_{tu}$ = −0.168, p = 0.119), and those residing for 20 years or more had a 1.4% lower sugar intake ($\beta_{tu}$ = −0.014, p = 0.871).
+
+Finally, income-to-poverty ratio was not significantly associated with sugar intake. Relative to individuals at or below the poverty line, no income category showed statistically significant differences in sugar consumption, with estimated effects ranging from a 0.2% increase to a 7.6% decrease in sugar intake across income categories (all $\beta_{inc}$ with a p > 0.10).
+
+###Model Fit
+```{r}
+r.squaredGLMM(fitfinal)
+#Null
+pchisq(2670.1, 4237, lower.tail=F)
+#Fitt
+pchisq(2398.4, 4219, lower.tail=F)
+#Best?
+pchisq(2670.1-2398.4, 4237-4219, lower.tail=F)
+```
+
+The model has a low $R^2$ of only 0.0997 which implies that demographic characteristics fall short on explaining sugar consumption, then unobserved patterns such a behavioral variables or geography accessibility to healthy food could be omitted variables that might explain sugar consumption. Compared to the Null model, the Fitted Model was a smaller Residual deviance compared to the saturated model.
+
+
+```{r}
+# Saving the predictions:
+dfwithpred <- add_predictions(dffinal,fitfinal)
+#Plot predictions vs real value
+ggplot(dfwithpred, aes(x = log_sugar, y = pred)) +
+  geom_point(alpha = 0.5, color = "#4DBBD5", size = 2) +
+  geom_line(aes(pred), colour = "#E64B35", size = 1.2) +
+  labs(
+    x = "Observed log(Sugar Intake)",
+    y = "Predicted log(Sugar Intake)",
+    title = "Observed vs. Predicted Sugar Intake"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.title = element_text(face = "bold")
+  )
+```
+
+The previous plot shows how the linear model might not be the best approach for this analysis as we are very weakly predicting the sugar intake with demographic variables.
+
+```{r}
+check_collinearity(fitfinal)
+check_heteroscedasticity(fitfinal)
+```
+```{r fullplot, fig.width=10, fig.height=6, dpi=300, out.width="100%"}
+check_model(fitfinal)
+```
+
+The Residuals versus Fitted plot illustrates the relationship between the model’s predicted values and the prediction errors (residuals). The plot shows a discernible pattern in which the spread of the residuals increases with higher fitted values, indicating the presence of heteroskedasticity. In addition, several observations fall noticeably below the zero line, suggesting the presence of potential outliers.
+
+The Q–Q plot of the residuals reveals a substantial deviation from the 45-degree reference line in the upper tail. Specifically, the sample quantiles exceed the corresponding theoretical quantiles, indicating that the normality assumption of the residuals is violated in this model.
+
+The Scale–Location plot further confirms the presence of heteroskedasticity, as the variance of the residuals is not constant across the range of fitted values.
+
+The Residuals versus Leverage plot is used to identify influential observations. Although several observations exhibit relatively high residuals, none exceed the Cook’s distance threshold. This suggests that, while extreme values in sugar consumption may reduce the efficiency of the model, they are not influential enough to substantially affect the estimated coefficients or overall conclusions.
+
+Finally, an assessment of multicollinearity indicates no cause for concern. Variance Inflation Factor (VIF) values for all independent variables are close to 1, suggesting a low degree of correlation among predictors and confirming that multicollinearity is not a significant issue in this model.
+
+## Conclusion Sugar Model
+
+This study examines the demographic and behavioral correlates of daily sugar consumption using a linear regression framework with log-transformed intake. The results highlight the central role of eating behaviors in explaining variation in sugar intake. In particular, the number of snacks consumed is strongly and positively associated with sugar intake, with each additional snack corresponding to a meaningful increase in consumption. Home-prepared meals are also positively associated with sugar intake, suggesting that higher overall meal frequency may be linked to greater total sugar exposure rather than reflecting diet quality alone.
+
+Substantial heterogeneity is observed across demographic groups. Females consume significantly less sugar than males, even after controlling for dietary behaviors and socioeconomic characteristics. Racial and ethnic differences are also evident, with Non-Hispanic White and Non-Hispanic Black individuals exhibiting higher sugar intake than Hispanic individuals. In contrast, educational attainment, time residing in the United States, and income-to-poverty ratio are not significantly associated with sugar intake in the multivariable framework. The absence of a clear income gradient suggests that economic resources alone may be insufficient to explain patterns of sugar consumption.
+
+Despite identifying several statistically significant associations, the model explains a relatively small share of the overall variation in sugar intake. This finding indicates that demographic characteristics capture only a limited portion of the determinants of sugar consumption and points to the importance of unobserved factors such as individual preferences, dietary habits, food environments, and geographic access to healthy options. Diagnostic analyses further reveal heteroskedasticity and deviations from normality in the residuals, implying reduced efficiency of the estimates, although no influential observations are detected and multicollinearity does not appear to be a concern.
+
+These findings have important policy implications. The lack of significant differences in sugar intake across income groups suggests that policies narrowly targeted by income may have limited effectiveness in reducing overall sugar consumption. While fiscal interventions such as sugar-sweetened beverage taxes remain a prominent policy tool([@backholer_impact_2016]; [@sharma_effects_2014]), the results underscore the potential value of broader strategies. Interventions aimed at improving access to healthy foods([@walker_disparities_2010]), reducing geographic disparities in food environments([@cdc_get_2024]), enhancing nutrition education([@toomer_nutrition_2016]; [@silva_nutrition_2023]), and strengthening food labeling([@dumoitier_review_2019]) may be more effective in addressing excessive sugar consumption at the population level. Future research incorporating behavioral measures and spatial indicators of food access could further improve understanding of the mechanisms underlying sugar intake and inform more targeted policy responses.
+
+# Model 2: Demographic Determinants of Sodium intake
+```{r}
+food <- read_parquet("proc_data/food_final_morevars.parquet")
+# Subset with only focus variables
+food_model <- subset(food, select = c(gender,age,race,timeus,hhsize,income_pov_cat,sodium))
+# Drop missing values
+food_model <-  food_model[!is.na(food_model$income_pov_cat),]
+```
+
+## Distribution of Sodium intake
+
+```{r}
+hsodium <- ggplot(food_model, aes(sodium)) +
+  geom_histogram(
+    breaks=seq(0, 21000, by = 1000),
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Daily Sodium Intake",
+    x = "Total Sodium (mg)",
+    y = "Frequency"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),   # outside area
+    panel.background = element_rect(fill = "antiquewhite", color = NA),  # plot area
+    panel.grid.major = element_line(color = "white"),             # optional: lighten grid
+    panel.grid.minor = element_blank(),
+    
+    # Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),  # title
+    axis.title = element_text(size = 20, face = "bold"),               # axis titles
+    axis.text = element_text(size = 20)                                # axis labels
+  )
+
+# Display the plot
+hsodium
+```
+**Sodium intake is heavily right-skewed which shows that most people consume moderate amounts, but there are few extreme outliers with very high intakes.**
+
+## Independent Variables
+### Boxplot of Sodium Intake by genders
+```{r}
+box_sodium_gender <- ggplot(food_model, aes(x = gender, y = sodium, fill = gender)) +
+  geom_boxplot(
+    alpha = 0.8, 
+    color = "chocolate4"
+  ) +
+  scale_fill_brewer(
+    palette = "Set3"
+  ) +
+  labs(
+    title = "Boxplot of Sodium Intake by Genders",
+    x = "Genders",
+    y = "Sodium Intake (mg)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 20),
+    legend.position = "none"
+  )
+# Display the plot
+box_sodium_gender
+```
+
+**This boxplot compares sodium intake by gender. We can see that Males have a higher median sodium intake and a wider range of consumption compared to Females.**
+
+### Scatterplot of Sodium Intake by different ages
+```{r}
+scatter_sodium_age <- ggplot(food_model, aes(x = age, y = sodium)) +
+  geom_point(
+    alpha = 0.5, 
+    color = "chocolate4"
+    ) +
+  scale_fill_brewer(
+    palette = "Set3"
+    ) +
+  labs(
+    title = "Scatterplot of Sodium Intake by different Ages",
+    x = "Age",
+    y = "Sodium Intake (mg)"
+    ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 20),
+    legend.position = "none"
+    )
+# Display the plot
+scatter_sodium_age
+```
+
+**This scatterplot of sodium intake versus Age shows that data is quite dense, revealing a lot of variability at every age, but it shows that consumption of sodium decreases as people get older.**
+
+### Boxplot of Sodium Intake by different Ethnic Groups
+```{r}
+box_sodium_ethnic <- ggplot(food_model, aes(x = race, y = sodium, fill = race)) +
+  geom_boxplot(
+    alpha = 0.8, 
+    color = "chocolate4"
+  ) +
+  scale_fill_brewer(
+    palette = "Set3"
+  ) +
+  labs(
+    title = "Boxplot of Sodium Intake by different Ethnic Groups",
+    x = "Ethnic Groups",
+    y = "Sodium Intake (mg)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 8),
+    legend.position = "none"
+  )
+# Display the plot
+box_sodium_ethnic
+```
+
+**From this plot, we can clearly see that the Non-Hispanic Asian group has a higher median sodium intake compared to others, while Hispanic and White groups appear to have lower overall sodium levels.The variation also differs slightly that means some groups have wider spreads in sodium consumption, likely due to diverse diets within those groups.**
+
+### Boxplot of Sodium Intake by different Income Groups
+```{r}
+box_sodium_income <- ggplot(food_model, aes(x = income_pov_cat, y = sodium, fill = income_pov_cat)) +
+  geom_boxplot(
+    alpha = 0.8, 
+    color = "chocolate4"
+  ) +
+  scale_fill_brewer(
+    palette = "Set3"
+  ) +
+  labs(
+    title = "Boxplot of Sodium Intake by different Income Groups",
+    x = "Income Groups",
+    y = "Sodium Intake (mg)"
+  ) +
+  theme(
+    # Background colors
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(), 
+    
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 15),
+    legend.position = "none"
+  )
+# Display the plot
+box_sodium_income
+```
+
+**This shows the relationship between income and sodium.In this income is categorized by the 'income-to-poverty ratio'.From the lowest income group (<100) on the left to the highest income group (500+) on the right, we observe a slight upward trend in median sodium intake. This suggests that higher socioeconomic status is actually associated with higher sodium consumption.**
+
+### Allpairs plot 
+```{r}
+pairs_plot <- pairs(food_model,
+      labels = colnames(food_model),
+      lower.panel = points,
+      upper.panel = panel.smooth,
+      diag.panel = NULL,
+      gap = 0.5,
+      cex.labels = 1.2,
+      font.labels = 2,
+      pch = 19,
+      col = "lightblue",
+      main = "Pairs Plot of food_model")
+```
+
+**This pairwise plot checks for correlations between all the variables.The relationship with age shows a downward trend, confirming the earlier observation. The relationship with household size appears relatively flat, suggesting weak association. We don't see any perfect straight lines, which tells us that no single variable perfectly predicts sodium intake on its own. It also helps us confirm that our predictors aren't too heavily correlated with each other, which avoids multicollinearity issues.**
+
+### Correlation Matrix and plot
+```{r}
+#Subset of only numerical variables
+food_model_num <- food_model[,c("age","hhsize","sodium")]
+cor_matrix <- cor(food_model_num)
+corrplot::corrplot(cor_matrix,
+                   method = "color",
+                   type = "full",
+                   addCoef.col = "black",
+                   tl.col = "black",
+                   tl.srt = 45,
+                   diag = TRUE)
+```
+
+**Correlation matrix and plot with the subset to only numerical variables age, hhsize and sodium.We can see that age and sodium are negtively correlated while hhsize and sodium are positively correlated.**
+
+## Linear Models
+### Model-1 with only numerical variables (age and hhsize)
+```{r}
+model1 = lm(sodium ~ age+hhsize, data = food_model)
+summary(model1)
+xkabledply(model1, title = "Model for sodium with age and hhsize as regressors" )
+xkablevif(model1)
+```
+
+**We chose age and hhsize as the initial predictors because they are key numerical demographic variables**
+
+**Coefficient Interpretation**
+
+- **Intercept = 3896.513**, which represents the expected daily sodium intake (in milligrams) when both age and household size are zero. While this scenario is not practically meaningful, the intercept serves as a baseline level of sodium intake against which the effects of age and household size are measured.
+
+- **Age Coefficient = −13.605**, For every one-year increase in age, daily sodium intake decreases by approximately 13.6 mg on average, holding household size constant.This shows a negative linear relationship between age and sodium intake, suggesting that older individuals tend to consume less sodium than younger individuals.
+
+- **hhsize Coefficient = −27.961**, For each additional household member, sodium intake decreases by approximately 28 mg on average, holding age constant.
+
+**P-Values:**
+
+- **Intercept p-value < 2e-16**. This is highly statistically significant, indicating strong evidence that the baseline sodium intake differs from zero.
+
+- **Age p-value < 2e-16**.This extremely small p-value indicates that age is a highly significant predictor of sodium intake. We reject the null hypothesis that the age coefficient equals zero.
+
+- **hhsize p-value = 0.138**. This p-value exceeds alpha levels (0.05), so we fail to reject the null hypothesis for household size. Thus, household size does not significantly predict sodium intake in this model.
+
+**Mutiple R-squared = 0.018113 (1.81%)**. This model explains approximately 1.8% of the total variation in daily sodium intake. This indicates that age and household size alone capture only a small portion of the factors influencing sodium consumption.
+
+**Adjusted R-squared = 0.01767**. The adjusted value confirms the limited explanatory power of the model after accounting for the number of predictors.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, meaning that at least one predictor (in this case, age) is associated with sodium intake.
+
+**This baseline model shows that age is a strong and statistically significant predictor of sodium intake, with older individuals consuming less sodium on average. However, household size does not have a significant effect, and the low R-squared value indicates that most of the variation in sodium intake is explained by other demographic and socioeconomic factors not included in this model.**
+
+
+### Model-2 with all focus variables (including categorical) 
+```{r}
+model2 = lm(sodium ~ age+gender+race+income_pov_cat+timeus, data = food_model)
+summary(model2)
+xkabledply(model2, title = "Model for sodium with all focus variables")
+xkablevif(model2)
+```
+
+**We chose Model 2 to expand upon Model 1 by incorporating key categorical demographic and socioeconomic variables such as age, gender, race, income category, and length of time in the U.S,to better explain variation in sodium intake.**
+
+**Coefficient Interpretation**
+
+- **Age Coefficient = −14.71**, For every one-year increase in age, daily sodium intake decreases by 14.71 mg on average, holding other variables constant.This shows a negative linear relationship between age and sodium intake, suggesting that older individuals tend to consume less sodium than younger individuals.
+
+- **GenderFemale Coefficient = −862.96**,This indicates that females are predicted to consume approximately 863mg less sodium than males, holding other variables constant.This suggest substantial gender based differences in dietary sodium intake.
+
+- **Race Non-Hispanic Asian Coefficient = 392.32**, This shows that these individuals consume significantly more sodium than other ethnic groups, holding other variables constant.
+
+- **Income Categories Coefficient**,Individuals in the 300–400% poverty threshold and 500%+ categories have significantly higher sodium intake compared to lower income group, suggesting that higher income does not necessarily correspond to healthier sodium consumption patterns.
+
+- **timeUS Coefficients**, people who have been in US for 20 years and more have higher sodium intake while people who have been in US for 5 to 15 years have a negative effect as the sodium intake decreases with one unit increase in timeUS. 
+
+**P-Values:**
+
+- **Age  and genderFemale p-value < 2e-16**.This extremely small p-value indicates that age and genderFemale are highly significant predictors of sodium intake. We reject the null hypothesis that the age and genderFemale coefficient equals zero.
+
+- **Race Categories p-value** Categories like Non-Hispanic White (p = 0.0278) and Non-Hispanic Asia (0.0032) were statistically significant (p < 0.05), While Non-Hispanic Black (0.1803) and Other Race - Including Multi-Racial (p=0.1171) do not show statistically significant differences because p > 0.05.
+
+- **Income_pov_cat p-values** Categories like income_pov_cat300-400 (p=3.1e-05) and income_pov_cat500+ (p=5.9e-05) were statistically significant (p < 0.05), while income_pov_cat100-200 (p = 0.2253), income_pov_cat200-300 (p = 0.0588) and income_pov_cat400-500 (p = 0.0704) were statistically not significant because p > 0.05.
+
+- **timeus p-value = 0.9707**, this is not statistically significant, indicating that duration do not reliably predicts sodium intake in this model.
+
+**Mutiple R-squared = 0.101 (1.01%)**. This model explains approximately 10.1% of the total variation in daily sodium intake. This model explains over five times more variance than Model 1, representing a substantial improvement in explanatory power.
+
+**Adjusted R-squared = 0.0986**. The adjusted value accounts for the 13 predictors and confirms that the additional variables meaningfully contribute to the model.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, meaning that the predictors, as a group, are associated with sodium intake.
+
+**Model 2 demonstrates that gender, age, income_pov_cat, and certain ethnic groups are strong predictors of sodium intake. Including demographic and socioeconomic variables significantly improves model performance, though a large portion of variability remains unexplained.**
+
+### Model-3 with age and income as interaction terms
+```{r}
+model3 = lm(sodium ~ age+gender+race*income_pov_cat, data = food_model)
+summary(model3)
+xkabledply(model3, title = "Model for sodium with all focus variables including interaction between race and income")
+xkablevif(model3)
+```
+
+**The model3 introduces interaction effects between race and income, allowing the relationship between income and sodium intake to differ across racial/ethnic groups.**
+
+**Coefficient Interpretation**
+
+- **Main Effect Coefficients** The interpretation of main effects (Age, Gender) becomes more complex, as their effect is now dependent on the interaction terms.
+
+- **Interaction Term Coefficients (race * income_pov_cat)** This generated 20 new coefficients. These coefficients represent the additional increase or decrease in sodium intake for a specific race within a specific income category, beyond what the two main effects would predict.
+
+**P-Values:**
+
+- **Age  and genderFemale p-value < 2e-16**.This extremely small p-value indicates that age and genderFemale are highly significant predictors of sodium intake. We reject the null hypothesis that the age and genderFemale coefficient equals zero.
+
+- **Race and Income Categories p-value** Several ethnic categories like Non-Hispanic black, Non-Hispanic Asian and income categories like 300–400%, 400–500% and 500+ were statistically significant (p < 0.05), While others do not show statistically significant differences because p > 0.05.
+
+- **Race * Income_pov_cat p-values** The majority of the individual interaction terms were not statistically significant (p > 0.05), meaning most specific race-by-income combinations do not have a unique effect.
+
+**Mutiple R-squared = 0.108 (1.08%)**. This model explains approximately 10.8% of the total variation in daily sodium intake. This model explains the highest percentage of variation, a 0.6% increase over Model 2.
+
+**Adjusted R-squared = 0.101**. The adjusted value accounts for these predictors and confirms that the additional variables meaningfully contribute to the model.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, meaning that the predictors, as a group, are associated with sodium intake.
+
+**Model 3 is statistically superior to Model 2, confirmed by the higher Adjusted R-squared. However, this marginal gain comes at a high cost as the model is significantly more complex (32 terms), and the poor significance of most individual interaction terms makes it extremely difficult to interpret for practical use.**
+
+### Model-4 with variables up to 3 interaction terms
+```{r}
+model4 = lm(sodium ~ age + (gender + race + income_pov_cat)^3, data = food_model)
+summary(model4)
+xkabledply(model4, title = "Model for sodium with  variables upto 3 interactions")
+xkablevif(model4)
+```
+
+**Model 4 was an attempt to add even more complexity by including additional interaction terms, aiming for the best predictive fit.This model includes all two-way and three-way interactions among gender, race, and income, in addition to age.**
+
+**Coefficients Interpretation**
+
+- **Main Effect Coefficients** The interpretation of main effects (Age, Gender) becomes more complex, as their effect is now dependent on the interaction terms.
+
+- **Interaction Term Coefficients** This generated 49 new coefficients. These coefficients represent the additional increase or decrease in sodium intake for a specific race within a specific income category, beyond what the two main effects would predict.
+
+**P-Values:**
+
+- **Age  and genderFemale p-value < 2e-16**.This extremely small p-value indicates that age and genderFemale are highly significant predictors of sodium intake. We reject the null hypothesis that the age and genderFemale coefficient equals zero.
+
+- **Race and Income Categories p-value** Almost all ethnic categories and income categories like are not statistically significant (p > 0.05), While only income_pov_cat300-400 is statistically significant (p = 0.00029).All of them lost statistical significance due to the inclusion of higher-order interactions, which absorb explanatory power.
+
+- **Interaction Terms p-values** A small number of two-way interactions are statistically significant, but many are not.This suggests over-parameterization, where added complexity does not translate into substantial explanatory gains.
+
+**Mutiple R-squared = 0.116 (1.16%)**. This model explains approximately 11.6% of the total variation in daily sodium intake. This model explains the highest percentage of variation among all models.
+
+**Adjusted R-squared = 0.103**. The Adjusted R-squared score is likely lower than Model 3's, as the addition of non-significant terms results in an expense that exceeds the minor gain in fit.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, due to the strong main effects (Age, Gender) carried over from Model 2.
+
+**While Model 4 achieves the highest Multiple R-squared, it suffers from interpretability issues and limited marginal improvement. The large number of interaction terms increases variance and reduces clarity, making it less suitable for practical inference.**
+
+## Model Testing
+
+### Anova Test
+```{r}
+anova = anova(model1,model2,model3,model4)
+anova
+xkablesummary(anova)
+```
+
+The ANOVA results compare four nested linear regression models for sodium intake, each adding progressively more demographic and socioeconomic complexity.
+
+**Model 2 vs. Model 1** - Adding gender, race, income, and time in the U.S. leads to a large and statistically significant reduction in residual sum of squares (F = 35.77, p < 2e-16). This indicates that demographic and socioeconomic variables substantially improve the model’s explanatory power beyond age and household size alone.
+
+**Model 3 vs. Model 2** - Introducing race * income interaction terms results in a statistically significant but modest improvement in model fit (F = 1.62, p = 0.047). This suggests that the effect of income on sodium intake differs across racial groups, although the magnitude of improvement is limited.
+
+**Model 4 vs. Model 3**- Adding higher-order (three-way) interactions does not significantly improve model fit at the alpha level (p = 0.097). This indicates diminishing returns from increased model complexity and potential overfitting.
+
+**Model 2 provides a strong improvement over the baseline, while Model 3 offers additional insight into socioeconomic heterogeneity with minimal complexity increase. Model 4 does not justify its added complexity. Therefore, Model 3 represents the best balance between explanatory power, interpretability, and statistical justification for modeling determinants of sodium intake.**
+
+## Best Model Visualizations
+
+```{r}
+#Extract and Prepare Model 2 Data
+model2_data <- tidy(model2) %>%
+  # Filter out the (Intercept) for cleaner visualization of predictors
+  filter(term != "(Intercept)") %>% 
+  # Create a significance label
+  mutate(
+    is_significant = p.value < 0.05,
+    short_term = gsub("raceNon-Hispanic |income_pov_cat|gender", "", term) 
+  )
+
+#Create the P-value Bar Plot
+pplot_model2 = ggplot(model2_data, aes(x = p.value, y = reorder(short_term, p.value), fill = is_significant)) +
+  geom_bar(stat = "identity") +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "red", size = 1) +
+  geom_text(aes(label = round(p.value, 4)), 
+            hjust = -0.1, 
+            color = "black", 
+            size = 7) +
+  xlim(0, max(model2_data$p.value) * 1.1) +
+  scale_fill_manual(values = c("TRUE" = "darkgreen", "FALSE" = "lightcoral"),
+                    labels = c("Not Significant (p ≥ 0.05)", "Significant (p < 0.05)")) +
+  labs(
+    title = "P-values of Predictors in Model 2",
+    x = "P-value",
+    y = "Predictor Term",
+    fill = "Significance"
+  ) +
+  theme(
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 8, face = "bold"),
+    axis.text  = element_text(size = 8),
+    legend.position = "bottom"
+  )
+
+#display the plot 
+pplot_model2
+```
+
+This plot shows the p-values of the predictors of model2. This shows green bars for predictors like Age and Gender, indicating they are statistically significant, while red bars for predictors like race, income and time in us indicating they are not statistically significant.
+
+```{r}
+#Extract and Prepare Model 3 Data
+pplott_model3 = model3_data <- tidy(model3) %>%
+  # Filter out the (Intercept) for cleaner visualization of predictors
+  filter(term != "(Intercept)") %>% 
+  # Create a significance label
+  mutate(
+    is_significant = p.value < 0.05,
+    short_term = gsub("raceNon-Hispanic |income_pov_cat|gender", "", term) 
+  )
+
+#Create the P-value Bar Plot
+pplot_model3 = ggplot(model3_data, aes(x = p.value, y = reorder(short_term, p.value), fill = is_significant)) +
+  geom_bar(stat = "identity") +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "red", size = 1) +
+  geom_text(aes(label = round(p.value, 4)), 
+            hjust = -0.1, 
+            color = "black", 
+            size = 3) +
+  xlim(0, max(model3_data$p.value) * 1.1) +
+  scale_fill_manual(values = c("TRUE" = "darkgreen", "FALSE" = "lightcoral"),
+                    labels = c("Not Significant (p ≥ 0.05)", "Significant (p < 0.05)")) +
+  labs(
+    title = "P-values of Predictors in Model 3",
+    x = "P-value",
+    y = "Predictor Term",
+    fill = "Significance"
+  ) +
+  theme(
+    #Font sizes
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 8, face = "bold"),
+    axis.text  = element_text(size = 8),
+    legend.position = "bottom"
+  )
+
+#display the plot 
+pplot_model3
+```
+
+This plot shows the p-values of the predictors of model3.Most of the interaction terms added in Model 3 have high p-values, meaning they are not statistically significant individually.
+
+**Since Model 3 is much harder to interpret without adding meaningful predictive power, we determined that Model 2 was the better choice for interpretability.**
+
+
+```{r}
+# Comprehensive residual plots
+par(mfrow = c(2, 2)) 
+plot(model3, main = "Diagnostic Plots for Model 3") 
+```
+
+The residual diagnostics indicate that several key linear regression assumptions are violated. 
+
+**The Residuals vs. Fitted plot** shows a clear funnel-shaped pattern, with residual variance increasing as fitted sodium intake values rise. This indicates heteroscedasticity, meaning the model’s prediction errors are not constant across levels of the outcome.
+
+**The Q–Q plot** reveals substantial deviations from the reference line, particularly in the upper tail. This suggests that the residuals are not normally distributed and are right-skewed, with more extreme high sodium values than expected under normality.
+
+**The Residuals vs. Leverage plot** identifies a small number of observations with large residuals; however, none exhibit excessively high leverage or Cook’s distance. This indicates that while outliers exist, they are not highly influencing the estimated regression coefficients.
+
+**Despite the clear assumption violations, Model 2 is choosen as the best untransformed option due to its superior interpretability and simplicity. These issues necessitate a data transformation (e.g Log-transformation) to produce a statistically robust model.**
+
+
+## Transformations
+```{r}
+food_model$log_sodium = log(food_model$sodium)
+```
+
+To address the normality and heteroscedasticity issues we just identified, we applied a logarithmic transformation to our outcome variable.
+
+
+## Histogram of Log-Transformed Sodium Intake
+```{r}
+hlog_sodium <- ggplot(food_model, aes(log(sodium))) +
+  geom_histogram(
+    bins = 40,
+    fill = "chocolate",
+    color = "chocolate4",
+    alpha = 0.9
+  ) +
+  labs(
+    title = "Distribution of Log-Transformed Sodium Intake",
+    x = "log(Sodium)",
+    y = "Frequency"
+  ) +
+  theme(
+    plot.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.background = element_rect(fill = "antiquewhite", color = NA),
+    panel.grid.major = element_line(color = "white"),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 20, face = "bold"),
+    axis.text  = element_text(size = 20)
+  )
+# Display
+hlog_sodium
+```
+
+This histogram shows the distribution of log-transformed sodium intake. After log transformation, the distribution is much more symmetric and bell-shaped, approximating a normal distribution much better.
+
+### Linear Regression Model With log(sodium)
+```{r}
+model_log <- lm(log_sodium ~ age + gender + race + income_pov_cat + timeus + hhsize, data = food_model)
+summary(model_log)
+xkablevif(model_log)
+```
+
+**This model uses log(sodium intake) as the dependent variable to address skewness and heteroscedasticity observed in the untransformed models.The predictors include age, gender, race, income category, length of time in the U.S., and household size.**
+
+**Coefficient Interpretation**
+
+- **Intercept = 8.040911**, which represents the expected daily log sodium intake (in milligrams) when all variables are zero. While not directly meaningful substantively, it serves as the baseline from which all demographic effects are measured.
+
+- **Age Coefficient = −0.0048**, Holding all other variables constant, each additional year of age is associated with approximately a 0.48% decrease in daily sodium intake. This suggests that older individuals tend to consume less sodium than younger individuals.This shows a negative effect on log sodium intake.
+
+- **Gender(Female) Coefficient = -0.270793**, Being female is associated with approximately a 27% lower sodium intake compared to males, after controlling for all other factors. This is one of the largest effects in the model.So, Gender is a strong and highly significant predictor.
+
+- **Race Non-Hispanic White Coefficients = 0.073** - Non-Hispanic White adults are predicted to consume approximately 7.62% more sodium than the reference group Hispanic.
+
+- **Race Non-Hispanic Asian Coefficients = 0.147** - Non-Hispanic Asian adults are predicted to consume approximately 15.86% more sodium than the reference group Hispanic.
+
+- **income_pov_cat500+ Coefficients = 0.183357** - Individuals in the highest income category are predicted to consume approximately 18.33% more sodium than the lowest income category (<100%, the reference).
+
+- **income_pov_cat300-400 Coefficients = 0.190937** - Individuals in the 300-400% income category are predicted to consume approximately 19.09% more sodium than the lowest income category (<100%, the reference).
+
+**P-Values:**
+
+- **Highly Significant Predictors**: Age, genderFemale, and all income categories, are highly significant.
+
+- **Significant Predictors (p < 0.05)**: raceNon-Hispanic White, raceNon-Hispanic Asian, raceOther Race, and income_pov_cat100-200 are statistically significant
+predictors.
+
+- **Non-Significant Predictors (p > 0.05)**: raceNon-Hispanic Black (p=0.585), hhsize (p=0.443), and the two timeus categories are not statistically significant predictors of sodium intake.
+
+**Mutiple R-squared = 0.101 (10.1%)**. This model explains approximately 10.1% of the total variation in daily sodium intake.
+
+**Adjusted R-squared = 0.0983** The adjusted value confirms that the demographic and socioeconomic factors explain slightly under 10% of the variance.
+
+**F-statistic p-value < 2.2e-16**.The overall model is statistically significant, meaning that the predictors, as a group,predict log(sodium) intake.
+
+**The model log(sodium) is the best model as it satisfies the underlying regression assumptions. It provides strong evidence that Gender, Age, Race, and Income-to-Poverty Ratio are the most significant demographic drivers of sodium intake, with females consuming less and older, higher-income, and certain non-Hispanic groups consuming more..**
+
+
+### Comprehensive residual plots
+```{r}
+par(mfrow = c(2, 2)) 
+plot(model_log, main = "Diagnostic Plots for Model log(sodium) ")
+```
+
+These plots for the final model with log(sodium intake) as the dependent variable indicate that the linear regression assumptions are substantially better satisfied compared to the untransformed models.
+
+**Residuals vs Fitted**:The residuals are now randomly scattered around zero with a relatively constant spread across all fitted values.This indicates that the log transformation has effectively corrected the heteroscedasticity problem. Prediction errors are now more stable across low, medium, and high levels of sodium intake.
+
+**Normal Q–Q Plot**:The residuals follow the theoretical normal line much more closely than in the untransformed specification.Although mild deviations remain in the extreme tails, the central portion of the distribution aligns well with the diagonal, suggesting that the normality assumption is reasonably satisfied.
+
+**Residuals vs Leverage**: A small number of observations show relatively large standardized residuals; however, none approach the Cook’s distance threshold. This indicates that while some outliers remain, they do not exert disproportionate influence on the estimated regression coefficients.
+
+**The log transformation successfully mitigates the primary assumption violations—heteroscedasticity and non-normality—present in the original models.**
+
+## Conclusions Sodium Intake Model 
+
+In conclusion, while demographic variables explain only about a small amount of the variation in sodium consumption, we identified distinct, statistically significant patterns:
+
+- **Women consume significantly less sodium than men.**
+
+- **Older adults tend to consume less sodium than younger adults.**
+
+- **Higher Income groups and Non-Hispanic White or Asian populations are associated with significantly higher sodium intake.**
+
+These findings are crucial for public health, as they help identify exactly which groups are at higher risk for excessive sodium consumption.
+
+# Model to predict the probability of a healthy diet
+
+## Constructing the Healthy Diet Score (Gender-Specific)
+
+We construct a healthy diet score ranging from 0–7, where each point corresponds to meeting one NIH dietary benchmark. Because recommended intake differs by gender, we apply gender-specific thresholds for calories, protein, fiber, and carbohydrates. A binary outcome variable (healthy_diet) is then created, where 1 indicates meeting at least 5 of the 7 criteria. Roughly 24% of respondents meet this threshold, indicating a class imbalance.
+```{r}
+food = read_parquet("proc_data/demo_foods.parquet")
+# Create a gender-specific healthy diet score based on NIH benchmarks
+food <- food %>%
+  mutate(
+    healthy_score = case_when(
+      # Female thresholds (RIAGENDR == 2)
+      RIAGENDR == 2 ~ (
+        (DR1IKCAL_sum <= 2000) +
+        (DR1ISODI_sum < 2300) +
+        (DR1IPROT_sum >= 50) +
+        (DR1ISUGR_sum <= 50) +
+        (DR1ICARB_sum <= 275) +
+        (DR1IFIBE_sum >= 28) +
+        (DR1ITFAT_sum <= 78)
+      ),
+      # Male thresholds (RIAGENDR == 1)
+      RIAGENDR == 1 ~ (
+        (DR1IKCAL_sum <= 2500) +
+        (DR1ISODI_sum < 2300) +
+        (DR1IPROT_sum >= 56) +
+        (DR1ISUGR_sum <= 50) +
+        (DR1ICARB_sum <= 300) +
+        (DR1IFIBE_sum >= 31) +
+        (DR1ITFAT_sum <= 88)
+      )
+    ),
+    # Healthy if meeting at least 5 out of 7 criteria
+    healthy_diet = if_else(healthy_score >= 5, 1, 0)
+  )
+
+# Distribution of healthy vs unhealthy
+table(food$healthy_diet)
+prop.table(table(food$healthy_diet))
+```
+
+To simplify interpretation and avoid sparse categories, we regroup marital status and race variables into broader, more balanced groups. Hispanic respondents are combined into a single category, and marital status is collapsed into partnered, widowed/separated, and single.
+
+```{r}
+# Recode marital status
+food <- food %>%
+  mutate(
+    marital_recode = case_when(
+      DMDMARTZ %in% c(1, 6) ~ "Partnered",
+      DMDMARTZ %in% c(2, 4) ~ "Wid/Separated",
+      TRUE ~ "Single"
+    )
+  )
+
+# Recode race/ethnicity
+food <- food %>%
+  mutate(
+    race_recode = case_when(
+      RIDRETH3 %in% c(1, 2) ~ "Hispanic",
+      RIDRETH3 == 3 ~ "White",
+      RIDRETH3 == 4 ~ "Black",
+      TRUE ~ "Other"
+    )
+  )
+```
+
+
+Here we prepare the final modeling dataset by converting categorical variables to factors and removing observations with missing values. The final dataset includes demographic predictors commonly used in diet research.
+
+```{r}
+# Convert categorical variables to factors
+food$healthy_diet   <- factor(food$healthy_diet)
+food$RIAGENDR       <- factor(food$RIAGENDR)
+food$race_recode    <- factor(food$race_recode)
+food$marital_recode <- factor(food$marital_recode)
+food$DMDEDUC2       <- factor(food$DMDEDUC2)
+
+# Select variables for modeling
+model_data <- food %>%
+  dplyr::select(
+    healthy_diet,
+    RIAGENDR,
+    RIDAGEYR,
+    race_recode,
+    marital_recode,
+    DMDEDUC2,
+    INDFMPIR
+  ) %>%
+  tidyr::drop_na()
+```
+
+
+## Stepwise Logistic Regression and ANOVA Comparison
+
+We estimate a series of nested logistic regression models and compare them using likelihood ratio tests. Education significantly improves model fit, income does not add explanatory power once gender-adjusted thresholds are used, race improves the model modestly, and marital status does not significantly improve fit.
+
+```{r}
+# Model A: age + gender
+model_A <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR,
+               data = model_data, family = binomial)
+
+# Model B: add education
+model_B <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR + DMDEDUC2,
+               data = model_data, family = binomial)
+
+anova(model_A, model_B, test = "Chisq")
+
+# Model C: add income
+model_C <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR + DMDEDUC2 + INDFMPIR,
+               data = model_data, family = binomial)
+
+anova(model_B, model_C, test = "Chisq")
+
+# Model D: add race
+model_D <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR + DMDEDUC2 +
+                 INDFMPIR + race_recode,
+               data = model_data, family = binomial)
+
+anova(model_C, model_D, test = "Chisq")
+
+# Model E: add marital status
+model_E <- glm(healthy_diet ~ RIAGENDR + RIDAGEYR + DMDEDUC2 +
+                 INDFMPIR + race_recode + marital_recode,
+               data = model_data, family = binomial)
+
+anova(model_D, model_E, test = "Chisq")
+```
+
+## Final Model Selection
+
+Using a 0.5 cutoff, the model achieves relatively high accuracy (~76%) but extremely low sensitivity. This reflects the strong class imbalance and indicates that demographic variables alone are poor predictors of healthy diet status.
+
+
+```{r}
+model3 <- model_D
+# Predicted probabilities
+pred_prob3 <- predict(model3, type = "response")
+
+# Classification using 0.5 cutoff
+pred_class3 <- if_else(pred_prob3 >= 0.5, 1, 0)
+
+# Confusion matrix
+conf_mat3 <- table(pred_class3, model_data$healthy_diet)
+conf_mat3
+
+# Performance metrics
+cutoff <- 0.5
+TN <- conf_mat3["0","0"]
+FP <- conf_mat3["1","0"]
+FN <- conf_mat3["0","1"]
+TP <- conf_mat3["1","1"]
+
+metrics <- list(
+  Cutoff_used = cutoff,
+  Accuracy = (TP + TN) / (TP + TN + FP + FN),
+  Sensitivity = TP / (TP + FN),
+  Specificity = TN / (TN + FP),
+  Precision = TP / (TP + FP)
+)
+
+metrics
+```
+
+
+##. Visualizations
+
+The visualizations highlight the distribution of diet scores by gender and confirm that the model performs only slightly better than random guessing (AUC ≈ 0.60), reinforcing the conclusion that demographics alone cannot strongly predict diet quality.
+
+```{r}
+# Distribution of healthy diet scores by gender
+ggplot(food, aes(x = healthy_score, fill = RIAGENDR)) +
+  geom_histogram(position = "dodge", bins = 7, alpha = 0.85) +
+  scale_fill_manual(values = c("#1f78b4", "#e31a1c"),
+                    labels = c("Male", "Female")) +
+  labs(
+    title = "Distribution of Healthy Diet Scores by Gender",
+    subtitle = "Scores represent number of NIH benchmarks met",
+    x = "Healthy Diet Score",
+    y = "Count",
+    fill = "Gender"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+```{r}
+library(pROC)
+roc_obj <- roc(model_data$healthy_diet, pred_prob3)
+
+ggplot(data.frame(
+  tpr = roc_obj$sensitivities,
+  fpr = 1 - roc_obj$specificities),
+  aes(x = fpr, y = tpr)) +
+  geom_line(color = "#1f78b4", linewidth = 1.2) +
+  geom_abline(linetype = "dashed", color = "grey50") +
+  labs(
+    title = "ROC Curve for Healthy Diet Model",
+    subtitle = paste("AUC =", round(auc(roc_obj), 3)),
+    x = "False Positive Rate",
+    y = "True Positive Rate"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+
+Overall, the goal was to predict whether someone meets a gender-adjusted healthy diet definition (at least 5 out of 7 NIH-style benchmarks) using demographics. Stepwise ANOVA suggests education improves model fit and race adds a small improvement, while income and marital status do not add much once the scoring is gender-adjusted. Model performance is limited (AUC ≈ 0.60), and with a 0.5 cutoff it predicts almost everyone as “unhealthy,” so accuracy is driven mostly by class imbalance rather than strong prediction. In other words, the model is better for describing broad trends than for accurately predicting healthy diet status for individuals, and it suggests most people do not meet the NIH benchmarks.
+
+## Conclusions Healthy Diet Model
+
+Using gender-adjusted NIH benchmarks avoids bias and reveals meaningful differences in diet quality. Education consistently predicts healthier diets, while income no longer matters once gender-specific nutritional needs are accounted for. Although the model captures broad demographic trends, it performs poorly at individual-level prediction, reflecting both class imbalance and the limits of demographics alone. Overall, the results clearly show that most Americans do not meet NIH nutritional benchmarks.
+
+# Conclusions
+
+Taken together, the three empirical models on sugar intake, sodium intake, and healthy diet quality provide a consistent and nuanced picture of dietary behavior in the United States. Across all outcomes, demographic characteristics explain only a modest share of variation in nutritional intake, underscoring the complexity of dietary behavior and the limits of relying on socioeconomic or demographic factors alone to predict or change diet quality.
+
+Several patterns emerge consistently across models. Gender is a robust and persistent predictor: women consume significantly less sugar and sodium than men and are more likely to meet healthy diet benchmarks once gender-specific nutritional needs are appropriately accounted for. Age also matters for certain nutrients, with older adults consuming less sodium, suggesting that dietary risks vary meaningfully over the life course. In contrast, income plays a surprisingly limited role. Sugar intake shows no clear income gradient, and income loses explanatory power for healthy diet quality once benchmarks are adjusted for gender. These findings suggest that economic resources alone are insufficient to explain differences in dietary intake and that interventions narrowly targeted by income may have limited effectiveness.
+
+Racial and ethnic disparities appear in both sugar and sodium consumption, though not always in the same direction. Non-Hispanic White individuals exhibit higher intake of both sugar and sodium relative to Hispanic individuals, while Non-Hispanic Black individuals consume more sugar and Asian individuals consume more sodium. These heterogeneous patterns point to the influence of cultural dietary norms, food environments, and consumption habits that are not fully captured by standard demographic controls.
+
+Behavioral factors, particularly eating patterns, emerge as especially important for sugar intake. The strong association between snacking frequency and sugar consumption highlights how daily food choices and meal structure may drive excess intake more than traditional socioeconomic indicators. At the same time, the positive association between home-prepared meals and sugar intake suggests that higher eating frequency, rather than diet quality per se, may increase total exposure to sugar. These results reinforce the need to distinguish between quantity, timing, and composition of meals when evaluating dietary risks.
+
+Despite identifying statistically significant correlates, all three models perform poorly in explaining individual-level variation. The sugar and sodium models exhibit low explanatory power, and the healthy diet model struggles with prediction due to class imbalance and the inherent limitations of demographic predictors. Diagnostic evidence of heteroskedasticity and non-normal residuals in the sugar model further emphasizes that substantial unobserved factors—such as preferences, habits, food marketing exposure, geographic access, and local food environments—likely play a central role in shaping dietary outcomes.
+
+From a public health perspective, the findings converge on an important conclusion: most Americans fail to meet established nutritional benchmarks, and excess intake of sugar and sodium remains widespread across demographic groups. While fiscal and regulatory policies such as sugar-sweetened beverage taxes may contribute to reductions in consumption, the results suggest that broader, more comprehensive strategies are needed. Policies that improve access to healthy foods, address geographic disparities in food environments, enhance nutrition education, and strengthen food labeling may be more effective in shifting population-level dietary patterns than approaches focused solely on income or demographic targeting.
+
+Overall, this study highlights the value of combining nutrient-specific models with broader measures of diet quality. Doing so reveals both shared and distinct determinants of unhealthy consumption and underscores the importance of moving beyond demographics toward behavioral, environmental, and structural explanations. Future research incorporating richer behavioral data and spatial indicators of food access will be essential for designing more effective and equitable nutrition policies.
+
+# References
+
