@@ -1657,6 +1657,26 @@ metrics <- list(
 )
 
 metrics
+df_plot=tibble( healthy_diet = model3$y, pred= model3$fitted.values) |>
+  mutate(type = case_when(
+      healthy_diet == 1 & pred >= cutoff ~ "TP",
+      healthy_diet == 0 & pred >= cutoff ~ "FP",
+      healthy_diet == 1 & pred <  cutoff ~ "FN",
+      healthy_diet == 0 & pred <  cutoff ~ "TN"
+    ), type = factor(type, levels = c("FN", "FP", "TN", "TP")))
+
+cols <- c(FN = "tomato", FP = "yellowgreen", TN = "cyan3", TP = "orchid")
+
+ggplot(df_plot, aes(x = factor(healthy_diet), y = pred)) +
+  geom_violin(fill = "white", color = NA, alpha = 0.6, trim = TRUE) +
+  geom_jitter(aes(color = type), width  = 0.5, height = 0, alpha  = 0.6, size   = 1.8, fill   = NA, shape  = 21,) +
+  geom_hline(yintercept = cutoff, color = "red", alpha = 0.6) +
+  scale_color_manual(values = cols, name = "type") +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(title = sprintf("Threshold at %.2f", cutoff), x = "healthy_diet", y = "predicted") +
+  theme_minimal(base_size = 12) +
+  theme( panel.background = element_rect(fill = "gray90", color = NA),
+    plot.background  = element_rect(fill = "gray90", color = NA))
 ```
 
 
